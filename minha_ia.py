@@ -6,12 +6,9 @@ from google.genai import types
 # Configuração da página da web
 st.set_page_config(page_title="Cintia IA", page_icon="🤖", layout="centered")
 
-# Sua chave de API do Google AI Studio
-os.environ["GOOGLE_API_KEY"] = st.secrets["GOOGLE_API_KEY"]
-
 # Inicializa o cliente básico do Google
 if "client" not in st.session_state:
-    st.session_state.client = genai.Client()
+    st.session_state.client = genai.Client(api_key=st.secrets["GOOGLE_API_KEY"])
 
 # Inicializa o Chat dentro do Session State (assim o Streamlit nunca esquece a conexão)
 if "objeto_chat" not in st.session_state:
