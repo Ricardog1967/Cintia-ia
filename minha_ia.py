@@ -7,7 +7,7 @@ from google.genai import types
 st.set_page_config(page_title="Cintia IA", page_icon="🤖", layout="centered")
 
 # Sua chave de API do Google AI Studio
-os.environ["GEMINI_API_KEY"] = st.secrets["GEMINI_API_KEY"]
+os.environ["GOOGLE_API_KEY"] = st.secrets["GOOGLE_API_KEY"]
 
 # Inicializa o cliente básico do Google
 if "client" not in st.session_state:
