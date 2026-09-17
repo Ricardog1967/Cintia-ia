@@ -13,7 +13,7 @@ st.set_page_config(page_title="Cintia IA", page_icon="🤖", layout="centered")
 if "client" not in st.session_state:
     st.session_state.client = genai.Client(api_key=st.secrets["GOOGLE_API_KEY"])
 
-# Inicializa o Chat dentro do Session State (assim o Streamlit nunca esquece a conexão)
+# Inicializa o Chat dentro do Session State
 if "objeto_chat" not in st.session_state:
     instrucao_sistema = "Seu nome é Cintia. Você é uma IA assistente focada em análise de dados e supply chain, muito prestativa com o Ricardo."
     st.session_state.objeto_chat = st.session_state.client.chats.create(
@@ -36,7 +36,6 @@ with st.sidebar:
     st.subheader("Sua Assistente de Dados")
     st.markdown("---")
     
-    # Botão para enviar o documento de Logística/Dados (Atualizado para aceitar Planilhas!)
     arquivo_enviado = st.file_uploader(
         "Adicione sua Base de Conhecimento (PDF, CSV ou Excel)",
         type=["pdf", "csv", "xlsx"],
@@ -64,14 +63,12 @@ if arquivo_enviado is not None:
             st.write("📋 **Visualização rápida dos dados (Primeiras 5 linhas):**")
             st.dataframe(df.head(5))
             
-            # Salva a planilha na memória para criarmos os gráficos depois
             st.session_state['dados_planilha'] = df
             
             st.write("📊 **Análise Visual Avançada:**")
             colunas_texto = df.select_dtypes(include=['object']).columns.tolist()
         
             if colunas_texto:
-                # Seleciona uma coluna de texto para o gráfico (ex: Fornecedor ou ID)
                 eixo_x = colunas_texto[2] if len(colunas_texto) > 2 else colunas_texto[0]
                 
                 fig = px.histogram(
@@ -88,8 +85,32 @@ if arquivo_enviado is not None:
                 )
                 
                 st.plotly_chart(fig, use_container_width=True)
+                
+                # --- 🧠 NOVO BLOCO: INSIGHTS E DIAGNÓSTICOS AUTOMÁTICOS ---
+                st.markdown("### 💡 Diagnóstico da Cintia (Insights Operacionais):")
+                
+                # Calcula qual categoria mais se repete (Top Fornecedor / ID)
+                top_registro = df[eixo_x].value_counts().idxmax()
+                Qtd_top_registro = df[eixo_x].value_counts().max()
+                total_registros = len(df)
+                percentual = (Qtd_top_registro / total_registros) * 100
+                
+                # Cria 3 caixas de destaque com métricas reais
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.metric(label=f"Maior Volume ({eixo_x})", value=str(top_registro))
+                with col2:
+                    st.metric(label="Total de Movimentações", value=f"{total_registros} envios")
+                
+                # Mensagem consultiva automatizada em formato de alerta limpo
+                st.warning(
+                    f"⚠️ **Aviso de Gestão de Risco:** O indicador **{top_registro}** concentra "
+                    f"**{percentual:.1f}%** de toda a sua operação na planilha (com {Qtd_top_registro} envios). "
+                    f"Em estratégias de Supply Chain, é recomendável monitorar de perto essa dependência "
+                    f"para evitar gargalos ou paradas operacionais."
+                )
+                # --------------------------------------------------------
             
-            # Transforma as primeiras linhas em texto para a Cintia saber o que tem na planilha
             contexto_documento = f"O usuário enviou uma planilha chamada {nome_arquivo}.\n"
             contexto_documento += f"Colunas presentes: {', '.join(df.columns)}\n"
             contexto_documento += f"Amostra dos dados:\n{df.head(3).to_string()}"
@@ -97,7 +118,7 @@ if arquivo_enviado is not None:
         except Exception as e:
             st.error(f"Erro ao ler o arquivo de planilha: {e}")
 
-    # 📄 CASO 2: SE FOR PDF (Seu código original do RAG!)
+    # 📄 CASO 2: SE FOR PDF
     elif nome_arquivo.endswith('.pdf'):
         try:
             leitor_pdf = pypdf.PdfReader(arquivo_enviado)
@@ -109,22 +130,16 @@ if arquivo_enviado is not None:
 
 st.markdown("### 💬 Conversa com a Cintia")
 
-# Mostra o histórico na tela
 for msg in st.session_state.historico_visual:
     with st.chat_message(msg["role"]):
         st.write(msg["content"])
 
-# Caixa de entrada para o usuário digitar
 if pergunta := st.chat_input("Digite sua mensagem para a Cintia..."):
-    
-    # Mostra a pergunta do Ricardo na hora
     with st.chat_message("user"):
         st.write(pergunta)
     st.session_state.historico_visual.append({"role": "user", "content": pergunta})
     
-    # Envia a mensagem usando o chat guardado na memória do Streamlit
     try:
-        # Se tiver um arquivo carregado, junta o texto dele com a pergunta do Ricardo
         if 'contexto_documento' in locals() and contexto_documento:
             pergunta_completa = f"Baseado neste documento:\n{contexto_documento}\n\nPergunta do usuário: {pergunta}"
         else:
@@ -132,10 +147,10 @@ if pergunta := st.chat_input("Digite sua mensagem para a Cintia..."):
 
         response = st.session_state.objeto_chat.send_message(pergunta_completa)
         
-        # Mostra a resposta da Cintia
         with st.chat_message("assistant"):
             st.write(response.text)
         st.session_state.historico_visual.append({"role": "assistant", "content": response.text})
             
     except Exception as e:
         st.error(f"Erro de comunicação: {e}")
+
