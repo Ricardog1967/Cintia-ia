@@ -153,4 +153,3 @@ if pergunta := st.chat_input("Digite sua mensagem para a Cintia..."):
             
     except Exception as e:
         st.error(f"Erro de comunicação: {e}")
-
