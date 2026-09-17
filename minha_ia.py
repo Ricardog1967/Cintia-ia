@@ -6,8 +6,19 @@ from google.genai import types
 import pandas as pd
 import plotly.express as px
 
-# Configuração da página da web
-st.set_page_config(page_title="Cintia IA", page_icon="🤖", layout="centered")
+# Configuração da página da web - Modo Claro Moderno
+st.set_page_config(page_title="Cintia IA - Supply Chain Analytics", page_icon="🤖", layout="centered")
+
+# --- 🎨 TRUQUE VISUAL: Esconde os menus padrão do Streamlit para parecer um App Próprio ---
+hide_menu_style = """
+        <style>
+        #MainMenu {visibility: hidden;}
+        footer {visibility: hidden;}
+        header {visibility: hidden;}
+        .stDeployButton {display:none;}
+        </style>
+        """
+st.markdown(hide_menu_style, unsafe_allow_html=True)
 
 # Inicializa o cliente básico do Google
 if "client" not in st.session_state:
@@ -27,109 +38,137 @@ if "objeto_chat" not in st.session_state:
 # Histórico visual para renderizar na tela
 if "historico_visual" not in st.session_state:
     st.session_state.historico_visual = [
-        {"role": "assistant", "content": "Olá, Ricardo! Sou a Cintia. Como posso te ajudar com engenharia de dados e logística hoje?"}
+        {"role": "assistant", "content": "Olá! Sou a Cintia. Como posso te ajudar com engenharia de dados e logística hoje?"}
     ]
+
+# --- 👤 CABEÇALHO DO PORTFÓLIO DO RICARDO ---
+st.title("🤖 Cintia IA - Supply Chain Analytics")
+st.markdown(
+    """
+    **Desenvolvido por Ricardo G.** | [🔗 Acesse meu LinkedIn](https://linkedin.com) 
+    
+    Este aplicativo é um projeto de portfólio focado em **Engenharia de Dados e Logística**. 
+    Ele utiliza Inteligência Artificial avançada e processamento de dados em tempo real para analisar 
+    arquivos de supply chain e gerar diagnósticos automáticos de gestão de risco.
+    """
+)
+st.markdown("---")
 
 # Interface Visual - Barra Lateral
 with st.sidebar:
-    st.title("🤖 Cintia IA")
-    st.subheader("Sua Assistente de Dados")
-    st.markdown("---")
-    
+    st.subheader("📁 Upload de Documentos")
     arquivo_enviado = st.file_uploader(
-        "Adicione sua Base de Conhecimento (PDF, CSV ou Excel)",
+        "Suba sua Base de Conhecimento (PDF, CSV ou Excel)",
         type=["pdf", "csv", "xlsx"],
         help="Insira manuais em PDF ou planilhas de dados para a Cintia ler."
     )
+    
+    st.markdown("---")
+    # 💡 BOTÃO MÁGICO: Cria dados fictícios estruturados idênticos à sua planilha de Supply Chain caso o usuário não tenha um arquivo próprio
+    st.subheader("💡 Teste Rápido")
+    usar_exemplo = st.button("Carregar Planilha de Exemplo")
     
     st.markdown("---")
     st.info("Especialista em:\n- 📊 Engenharia de Dados\n- 📦 Supply Chain & Logística\n- 🧠 Analytics")
     st.success("Status: Online 🟢")
 
 contexto_documento = ""
+df = None
+nome_arquivo = ""
 
+# Define se vamos usar o arquivo enviado ou criar os dados de exemplo automaticamente
 if arquivo_enviado is not None:
     nome_arquivo = arquivo_enviado.name
-    
-    # 📊 CASO 1: SE FOR PLANILHA (Excel ou CSV)
-    if nome_arquivo.endswith('.csv') or nome_arquivo.endswith('.xlsx'):
-        try:
-            if nome_arquivo.endswith('.csv'):
-                df = pd.read_csv(arquivo_enviado)
-            else:
-                df = pd.read_excel(arquivo_enviado)
-                
-            st.success(f"📊 Planilha '{nome_arquivo}' lida com sucesso!")
-            st.write("📋 **Visualização rápida dos dados (Primeiras 5 linhas):**")
-            st.dataframe(df.head(5))
-            
-            st.session_state['dados_planilha'] = df
-            
-            st.write("📊 **Análise Visual Avançada:**")
-            colunas_texto = df.select_dtypes(include=['object']).columns.tolist()
+    try:
+        if nome_arquivo.endswith('.csv'):
+            df = pd.read_csv(arquivo_enviado)
+        else:
+            df = pd.read_excel(arquivo_enviado)
+    except Exception as e:
+        st.error(f"Erro ao ler o arquivo enviado: {e}")
         
-            if colunas_texto:
-                # 🎛️ FILTRO DINÂMICO: Cria uma caixa de seleção para escolher o que ver no gráfico
-                coluna_selecionada = st.selectbox(
-                    "🔍 Escolha o indicador para analisar no gráfico:",
-                    options=colunas_texto,
-                    index=colunas_texto.index('SupplierID') if 'SupplierID' in colunas_texto else 0
-                )
-                
-                # O gráfico agora muda de acordo com o que você selecionar na caixa!
-                fig = px.histogram(
-                    df, 
-                    x=coluna_selecionada, 
-                    title=f"Total de Envios por {coluna_selecionada}",
-                    color_discrete_sequence=["#007BFF"],
-                    template="plotly_white"
-                )
-                
-                fig.update_layout(
-                    margin=dict(l=20, r=20, t=40, b=20),
-                    height=350
-                )
-                
-                st.plotly_chart(fig, use_container_width=True)
-                
-                # --- 🧠 INSIGHTS AUTOMÁTICOS BASEADOS NO FILTRO ---
-                st.markdown(f"### 💡 Diagnóstico da Cintia sobre {coluna_selecionada}:")
-                
-                top_registro = df[coluna_selecionada].value_counts().idxmax()
-                Qtd_top_registro = df[coluna_selecionada].value_counts().max()
-                total_registros = len(df)
-                percentual = (Qtd_top_registro / total_registros) * 100
-                
-                col1, col2 = st.columns(2)
-                with col1:
-                    st.metric(label=f"Maior Volume ({coluna_selecionada})", value=str(top_registro))
-                with col2:
-                    st.metric(label="Total de Movimentações", value=f"{total_registros} envios")
-                
-                st.warning(
-                    f"⚠️ **Aviso de Gestão de Risco:** O indicador **{top_registro}** concentra "
-                    f"**{percentual:.1f}%** de toda a sua operação analisada nesta coluna (com {Qtd_top_registro} envios). "
-                    f"Monitore de perto essa concentração para garantir a eficiência do fluxo de Supply Chain."
-                )
-                # --------------------------------------------------------
-            
-            contexto_documento = f"O usuário enviou uma planilha chamada {nome_arquivo}.\n"
-            contexto_documento += f"Colunas presentes: {', '.join(df.columns)}\n"
-            contexto_documento += f"Amostra dos dados:\n{df.head(3).to_string()}"
-            
-        except Exception as e:
-            st.error(f"Erro ao ler o arquivo de planilha: {e}")
+elif usar_exemplo:
+    nome_arquivo = "Planilha_Exemplo_Supply_Chain.xlsx"
+    # Cria uma simulação realista baseada na sua planilha de rotas e fornecedores
+    dados_ficticios = {
+        'ShipmentID': [f'SHP-{i:05d}' for i in range(1, 101)],
+        'OrderID': [f'ORD-{i:05d}' for i in range(1001, 1101)],
+        'SupplierID': ['SUP-05']*35 + ['SUP-04']*25 + ['SUP-01']*15 + ['SUP-02']*15 + ['SUP-03']*10,
+        'Transportadora': ['DHL']*40 + ['FedEx']*30 + ['EKart']*15 + ['Delivery']*15
+    }
+    df = pd.DataFrame(dados_ficticios)
+    st.info("💡 Usando dados de exemplo simulados para demonstração do portfólio!")
 
-    # 📄 CASO 2: SE FOR PDF
-    elif nome_arquivo.endswith('.pdf'):
-        try:
-            leitor_pdf = pypdf.PdfReader(arquivo_enviado)
-            for pagina in leitor_pdf.pages:
-                contexto_documento += pagina.extract_text() + "\n"
-            st.success("📄 Documento lido com sucesso!")
-        except Exception as e:
-            st.error("Erro ao ler o arquivo PDF.")
+# Processamento da Planilha (caso exista dados carregados por upload ou pelo botão de exemplo)
+if df is not None:
+    st.success(f"📊 Planilha '{nome_arquivo}' carregada com sucesso!")
+    st.write("📋 **Visualização rápida dos dados (Primeiras 5 linhas):**")
+    st.dataframe(df.head(5))
+    
+    st.session_state['dados_planilha'] = df
+    
+    st.write("📊 **Análise Visual Avançada:**")
+    colunas_texto = df.select_dtypes(include=['object']).columns.tolist()
 
+    if colunas_texto:
+        # Se 'Transportadora' estiver nas colunas, inicia nela para dar um visual bonito
+        padrao_index = colunas_texto.index('Transportadora') if 'Transportadora' in colunas_texto else 0
+        coluna_selecionada = st.selectbox(
+            "🔍 Escolha o indicador para analisar no gráfico:",
+            options=colunas_texto,
+            index=padrao_index
+        )
+        
+        fig = px.histogram(
+            df, 
+            x=coluna_selecionada, 
+            title=f"Total de Envios por {coluna_selecionada}",
+            color_discrete_sequence=["#007BFF"],
+            template="plotly_white"
+        )
+        
+        fig.update_layout(
+            margin=dict(l=20, r=20, t=40, b=20),
+            height=350
+        )
+        
+        st.plotly_chart(fig, use_container_width=True)
+        
+        # --- 🧠 INSIGHTS AUTOMÁTICOS ---
+        st.markdown(f"### 💡 Diagnóstico da Cintia sobre {coluna_selecionada}:")
+        
+        top_registro = df[coluna_selecionada].value_counts().idxmax()
+        Qtd_top_registro = df[coluna_selecionada].value_counts().max()
+        total_registros = len(df)
+        percentual = (Qtd_top_registro / total_registros) * 100
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            st.metric(label=f"Maior Volume ({coluna_selecionada})", value=str(top_registro))
+        with col2:
+            st.metric(label="Total de Movimentações", value=f"{total_registros} envios")
+        
+        st.warning(
+            f"⚠️ **Aviso de Gestão de Risco:** O indicador **{top_registro}** concentra "
+            f"**{percentual:.1f}%** de toda a sua operação analisada nesta coluna (com {Qtd_top_registro} envios). "
+            f"Monitore de perto essa concentração para garantir a eficiência do fluxo de Supply Chain."
+        )
+    
+    contexto_documento = f"O usuário enviou uma planilha chamada {nome_arquivo}.\n"
+    contexto_documento += f"Colunas presentes: {', '.join(df.columns)}\n"
+    contexto_documento += f"Amostra dos dados:\n{df.head(3).to_string()}"
+
+# CASO 2: PROCESSAMENTO DE PDF (Mantido intacto)
+elif arquivo_enviado is not None and arquivo_enviado.name.endswith('.pdf'):
+    try:
+        leitor_pdf = pypdf.PdfReader(arquivo_enviado)
+        for pagina in leitor_pdf.pages:
+            contexto_documento += pagina.extract_text() + "\n"
+        st.success("📄 Documento PDF lido com sucesso!")
+    except Exception as e:
+        st.error("Erro ao ler o arquivo PDF.")
+
+# --- ÁREA DE CHAT ---
 st.markdown("### 💬 Conversa com a Cintia")
 
 for msg in st.session_state.historico_visual:
@@ -155,4 +194,3 @@ if pergunta := st.chat_input("Digite sua mensagem para a Cintia..."):
             
     except Exception as e:
         st.error(f"Erro de comunicação: {e}")
-
