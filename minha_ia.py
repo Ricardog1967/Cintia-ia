@@ -69,12 +69,18 @@ if arquivo_enviado is not None:
             colunas_texto = df.select_dtypes(include=['object']).columns.tolist()
         
             if colunas_texto:
-                eixo_x = colunas_texto[2] if len(colunas_texto) > 2 else colunas_texto[0]
+                # 🎛️ FILTRO DINÂMICO: Cria uma caixa de seleção para escolher o que ver no gráfico
+                coluna_selecionada = st.selectbox(
+                    "🔍 Escolha o indicador para analisar no gráfico:",
+                    options=colunas_texto,
+                    index=colunas_texto.index('SupplierID') if 'SupplierID' in colunas_texto else 0
+                )
                 
+                # O gráfico agora muda de acordo com o que você selecionar na caixa!
                 fig = px.histogram(
                     df, 
-                    x=eixo_x, 
-                    title=f"Total de Envios por {eixo_x}",
+                    x=coluna_selecionada, 
+                    title=f"Total de Envios por {coluna_selecionada}",
                     color_discrete_sequence=["#007BFF"],
                     template="plotly_white"
                 )
@@ -86,28 +92,24 @@ if arquivo_enviado is not None:
                 
                 st.plotly_chart(fig, use_container_width=True)
                 
-                # --- 🧠 NOVO BLOCO: INSIGHTS E DIAGNÓSTICOS AUTOMÁTICOS ---
-                st.markdown("### 💡 Diagnóstico da Cintia (Insights Operacionais):")
+                # --- 🧠 INSIGHTS AUTOMÁTICOS BASEADOS NO FILTRO ---
+                st.markdown(f"### 💡 Diagnóstico da Cintia sobre {coluna_selecionada}:")
                 
-                # Calcula qual categoria mais se repete (Top Fornecedor / ID)
-                top_registro = df[eixo_x].value_counts().idxmax()
-                Qtd_top_registro = df[eixo_x].value_counts().max()
+                top_registro = df[coluna_selecionada].value_counts().idxmax()
+                Qtd_top_registro = df[coluna_selecionada].value_counts().max()
                 total_registros = len(df)
                 percentual = (Qtd_top_registro / total_registros) * 100
                 
-                # Cria 3 caixas de destaque com métricas reais
                 col1, col2 = st.columns(2)
                 with col1:
-                    st.metric(label=f"Maior Volume ({eixo_x})", value=str(top_registro))
+                    st.metric(label=f"Maior Volume ({coluna_selecionada})", value=str(top_registro))
                 with col2:
                     st.metric(label="Total de Movimentações", value=f"{total_registros} envios")
                 
-                # Mensagem consultiva automatizada em formato de alerta limpo
                 st.warning(
                     f"⚠️ **Aviso de Gestão de Risco:** O indicador **{top_registro}** concentra "
-                    f"**{percentual:.1f}%** de toda a sua operação na planilha (com {Qtd_top_registro} envios). "
-                    f"Em estratégias de Supply Chain, é recomendável monitorar de perto essa dependência "
-                    f"para evitar gargalos ou paradas operacionais."
+                    f"**{percentual:.1f}%** de toda a sua operação analisada nesta coluna (com {Qtd_top_registro} envios). "
+                    f"Monitore de perto essa concentração para garantir a eficiência do fluxo de Supply Chain."
                 )
                 # --------------------------------------------------------
             
@@ -153,3 +155,4 @@ if pergunta := st.chat_input("Digite sua mensagem para a Cintia..."):
             
     except Exception as e:
         st.error(f"Erro de comunicação: {e}")
+
