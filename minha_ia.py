@@ -3,6 +3,8 @@ import pypdf
 import streamlit as st
 from google import genai
 from google.genai import types
+import pandas as pd
+import plotly.express as px
 
 # Configuração da página da web
 st.set_page_config(page_title="Cintia IA", page_icon="🤖", layout="centered")
@@ -34,16 +36,69 @@ with st.sidebar:
     st.subheader("Sua Assistente de Dados")
     st.markdown("---")
     
-    # Botão para enviar o documento de Logística/Dados
+    # Botão para enviar o documento de Logística/Dados (Atualizado para aceitar Planilhas!)
     arquivo_enviado = st.file_uploader(
-        "Adicione sua Base de Conhecimento (PDF)", 
-        type=["pdf"],
-        help="Insira manuais, relatórios ou planilhas em PDF para a Cintia ler."
+        "Adicione sua Base de Conhecimento (PDF, CSV ou Excel)",
+        type=["pdf", "csv", "xlsx"],
+        help="Insira manuais em PDF ou planilhas de dados para a Cintia ler."
     )
     
-    contexto_documento = ""
-    if arquivo_enviado is not None:
-        import pypdf
+    st.markdown("---")
+    st.info("Especialista em:\n- 📊 Engenharia de Dados\n- 📦 Supply Chain & Logística\n- 🧠 Analytics")
+    st.success("Status: Online 🟢")
+
+contexto_documento = ""
+
+if arquivo_enviado is not None:
+    nome_arquivo = arquivo_enviado.name
+    
+    # 📊 CASO 1: SE FOR PLANILHA (Excel ou CSV)
+    if nome_arquivo.endswith('.csv') or nome_arquivo.endswith('.xlsx'):
+        try:
+            if nome_arquivo.endswith('.csv'):
+                df = pd.read_csv(arquivo_enviado)
+            else:
+                df = pd.read_excel(arquivo_enviado)
+                
+            st.success(f"📊 Planilha '{nome_arquivo}' lida com sucesso!")
+            st.write("📋 **Visualização rápida dos dados (Primeiras 5 linhas):**")
+            st.dataframe(df.head(5))
+            
+            # Salva a planilha na memória para criarmos os gráficos depois
+            st.session_state['dados_planilha'] = df
+            
+            st.write("📊 **Análise Visual Avançada:**")
+            colunas_texto = df.select_dtypes(include=['object']).columns.tolist()
+        
+            if colunas_texto:
+                # Seleciona uma coluna de texto para o gráfico (ex: Fornecedor ou ID)
+                eixo_x = colunas_texto[2] if len(colunas_texto) > 2 else colunas_texto[0]
+                
+                fig = px.histogram(
+                    df, 
+                    x=eixo_x, 
+                    title=f"Total de Envios por {eixo_x}",
+                    color_discrete_sequence=["#007BFF"],
+                    template="plotly_white"
+                )
+                
+                fig.update_layout(
+                    margin=dict(l=20, r=20, t=40, b=20),
+                    height=350
+                )
+                
+                st.plotly_chart(fig, use_container_width=True)
+            
+            # Transforma as primeiras linhas em texto para a Cintia saber o que tem na planilha
+            contexto_documento = f"O usuário enviou uma planilha chamada {nome_arquivo}.\n"
+            contexto_documento += f"Colunas presentes: {', '.join(df.columns)}\n"
+            contexto_documento += f"Amostra dos dados:\n{df.head(3).to_string()}"
+            
+        except Exception as e:
+            st.error(f"Erro ao ler o arquivo de planilha: {e}")
+
+    # 📄 CASO 2: SE FOR PDF (Seu código original do RAG!)
+    elif nome_arquivo.endswith('.pdf'):
         try:
             leitor_pdf = pypdf.PdfReader(arquivo_enviado)
             for pagina in leitor_pdf.pages:
@@ -51,11 +106,6 @@ with st.sidebar:
             st.success("📄 Documento lido com sucesso!")
         except Exception as e:
             st.error("Erro ao ler o arquivo PDF.")
-
-    st.markdown("---")
-    st.info("Especialista em:\n- 📊 Engenharia de Dados\n- 📦 Supply Chain & Logística\n- 🧠 Analytics")
-    st.success("Status: Online 🟢")
-
 
 st.markdown("### 💬 Conversa com a Cintia")
 
@@ -72,20 +122,20 @@ if pergunta := st.chat_input("Digite sua mensagem para a Cintia..."):
         st.write(pergunta)
     st.session_state.historico_visual.append({"role": "user", "content": pergunta})
     
-                    # Envia a mensagem usando o chat guardado na memória do Streamlit
+    # Envia a mensagem usando o chat guardado na memória do Streamlit
     try:
-            # Se tiver um arquivo carregado, junta o texto dele com a pergunta do Ricardo
-            if 'contexto_documento' in locals() and contexto_documento:
-                pergunta_completa = f"Baseado neste documento:\n{contexto_documento}\n\nPergunta do usuário: {pergunta}"
-            else:
-                pergunta_completa = pergunta
+        # Se tiver um arquivo carregado, junta o texto dele com a pergunta do Ricardo
+        if 'contexto_documento' in locals() and contexto_documento:
+            pergunta_completa = f"Baseado neste documento:\n{contexto_documento}\n\nPergunta do usuário: {pergunta}"
+        else:
+            pergunta_completa = pergunta
 
-            response = st.session_state.objeto_chat.send_message(pergunta_completa)
-            
-            # Mostra a resposta da Cintia
-            with st.chat_message("assistant"):
-                st.write(response.text)
-            st.session_state.historico_visual.append({"role": "assistant", "content": response.text})
+        response = st.session_state.objeto_chat.send_message(pergunta_completa)
+        
+        # Mostra a resposta da Cintia
+        with st.chat_message("assistant"):
+            st.write(response.text)
+        st.session_state.historico_visual.append({"role": "assistant", "content": response.text})
             
     except Exception as e:
-            st.error(f"Erro de comunicação: {e}")
+        st.error(f"Erro de comunicação: {e}")
