@@ -161,7 +161,7 @@ if df is not None:
         total_financeiro_str = "N/A"
         if colunas_numericas:
             col1, col2, col3 = st.columns(3)
-            col_financeira = colunas_numericas[0] # Pega o primeiro indicador numérico
+            col_financeira = colunas_numericas[0] # Correção cirúrgica de índice numérico
             total_financeiro = df[col_financeira].sum()
             total_financeiro_str = f"R$ {total_financeiro:,.2f}"
             
@@ -206,7 +206,7 @@ if df is not None:
         except Exception as e:
             st.info(texto_sumario_pdf)
         
-        # --- 📥 GERAÇÃO COMPLETA DE RELATÓRIO PDF ---
+        # --- 📥 GERAÇÃO COMPLETA DE RELATÓRIO PDF (ESTRUTURA BLINDADA!) ---
         try:
             pdf = FPDF()
             pdf.add_page()
@@ -228,4 +228,3 @@ if df is not None:
             pdf_bytes = pdf.output(dest='S')
             
             st.download_button(
-
