@@ -26,7 +26,7 @@ if "client" not in st.session_state:
 
 # Inicializa o Chat dentro do Session State
 if "objeto_chat" not in st.session_state:
-    instrucao_sistema = "Seu nome é Cintia. Você é uma IA assistente focada em análise de dados e supply chain, muito prestativa com o Ricardo."
+    instrucao_sistema = "Seu name é Cintia. Você é uma IA assistente focada em análise de dados e supply chain, muito prestativa com o Ricardo."
     st.session_state.objeto_chat = st.session_state.client.chats.create(
         model="gemini-3.6-flash",
         config=types.GenerateContentConfig(
@@ -41,7 +41,7 @@ if "historico_visual" not in st.session_state:
         {"role": "assistant", "content": "Olá! Sou a Cintia. Como posso te ajudar com engenharia de dados e logística hoje?"}
     ]
 
-# --- 👤 CABEÇALHO DO PORTFÓLIO DO RICARDO ---
+# --- 👤 CABEÇALHO DO PORTFÓLIO DO RICARDO (LINK OFICIAL INSERIDO) ---
 st.title("🤖 Cintia IA - Supply Chain Analytics")
 st.markdown(
     """
@@ -64,7 +64,6 @@ with st.sidebar:
     )
     
     st.markdown("---")
-    # 💡 BOTÃO MÁGICO: Cria dados fictícios estruturados idênticos à sua planilha de Supply Chain caso o usuário não tenha um arquivo próprio
     st.subheader("💡 Teste Rápido")
     usar_exemplo = st.button("Carregar Planilha de Exemplo")
     
@@ -89,17 +88,19 @@ if arquivo_enviado is not None:
         
 elif usar_exemplo:
     nome_arquivo = "Planilha_Exemplo_Supply_Chain.xlsx"
-    # Cria uma simulação realista baseada na sua planilha de rotas e fornecedores
+    import random
+    random.seed(42)
     dados_ficticios = {
         'ShipmentID': [f'SHP-{i:05d}' for i in range(1, 101)],
         'OrderID': [f'ORD-{i:05d}' for i in range(1001, 1101)],
         'SupplierID': ['SUP-05']*35 + ['SUP-04']*25 + ['SUP-01']*15 + ['SUP-02']*15 + ['SUP-03']*10,
-        'Transportadora': ['DHL']*40 + ['FedEx']*30 + ['EKart']*15 + ['Delivery']*15
+        'Transportadora': ['DHL']*40 + ['FedEx']*30 + ['EKart']*15 + ['Delivery']*15,
+        'Custo_Frete_R$': [round(random.uniform(500, 4500), 2) for _ in range(100)]
     }
     df = pd.DataFrame(dados_ficticios)
-    st.info("💡 Usando dados de exemplo simulados para demonstração do portfólio!")
+    st.info("💡 Usando dados de exemplo simulados com indicadores financeiros!")
 
-# Processamento da Planilha (caso exista dados carregados por upload ou pelo botão de exemplo)
+# Processamento da Planilha
 if df is not None:
     st.success(f"📊 Planilha '{nome_arquivo}' carregada com sucesso!")
     st.write("📋 **Visualização rápida dos dados (Primeiras 5 linhas):**")
@@ -109,9 +110,9 @@ if df is not None:
     
     st.write("📊 **Análise Visual Avançada:**")
     colunas_texto = df.select_dtypes(include=['object']).columns.tolist()
+    colunas_numericas = df.select_dtypes(include=['number']).columns.tolist()
 
     if colunas_texto:
-        # Se 'Transportadora' estiver nas colunas, inicia nela para dar um visual bonito
         padrao_index = colunas_texto.index('Transportadora') if 'Transportadora' in colunas_texto else 0
         coluna_selecionada = st.selectbox(
             "🔍 Escolha o indicador para analisar no gráfico:",
@@ -119,22 +120,36 @@ if df is not None:
             index=padrao_index
         )
         
-        fig = px.histogram(
-            df, 
-            x=coluna_selecionada, 
-            title=f"Total de Envios por {coluna_selecionada}",
-            color_discrete_sequence=["#007BFF"],
-            template="plotly_white"
-        )
+        # Cria duas abas modernas para organizar os gráficos na tela do celular
+        aba_barras, aba_pizza = st.tabs(["📊 Gráfico de Volumetria", "🍕 Distribuição Percentual"])
         
-        fig.update_layout(
-            margin=dict(l=20, r=20, t=40, b=20),
-            height=350
-        )
+        with aba_barras:
+            fig_barras = px.histogram(
+                df, 
+                x=coluna_selecionada, 
+                title=f"Total de Envios por {coluna_selecionada}",
+                color_discrete_sequence=["#007BFF"],
+                template="plotly_white"
+            )
+            fig_barras.update_layout(margin=dict(l=20, r=20, t=40, b=20), height=350)
+            st.plotly_chart(fig_barras, use_container_width=True)
+            
+        with aba_pizza:
+            df_pizza = df[coluna_selecionada].value_counts().reset_index()
+            df_pizza.columns = [coluna_selecionada, 'Quantidade']
+            
+            fig_pizza = px.pie(
+                df_pizza, 
+                values='Quantidade', 
+                names=coluna_selecionada,
+                title=f"Participação da Operação por {coluna_selecionada}",
+                color_discrete_sequence=px.colors.qualitative.Pastel,
+                template="plotly_white"
+            )
+            fig_pizza.update_layout(margin=dict(l=20, r=20, t=40, b=20), height=350)
+            st.plotly_chart(fig_pizza, use_container_width=True)
         
-        st.plotly_chart(fig, use_container_width=True)
-        
-        # --- 🧠 INSIGHTS AUTOMÁTICOS ---
+        # --- 🧠 INSIGHTS AUTOMÁTICOS COM PAINEL FINANCEIRO ---
         st.markdown(f"### 💡 Diagnóstico da Cintia sobre {coluna_selecionada}:")
         
         top_registro = df[coluna_selecionada].value_counts().idxmax()
@@ -142,11 +157,23 @@ if df is not None:
         total_registros = len(df)
         percentual = (Qtd_top_registro / total_registros) * 100
         
-        col1, col2 = st.columns(2)
-        with col1:
-            st.metric(label=f"Maior Volume ({coluna_selecionada})", value=str(top_registro))
-        with col2:
-            st.metric(label="Total de Movimentações", value=f"{total_registros} envios")
+        if colunas_numericas:
+            col1, col2, col3 = st.columns(3)
+            col_financeira = colunas_numericas[0]
+            total_financeiro = df[col_financeira].sum()
+            
+            with col1:
+                st.metric(label=f"Maior Volume ({coluna_selecionada})", value=str(top_registro))
+            with col2:
+                st.metric(label="Total de Movimentações", value=f"{total_registros}")
+            with col3:
+                st.metric(label="Custo Total Identificado", value=f"R$ {total_financeiro:,.2f}")
+        else:
+            col1, col2 = st.columns(2)
+            with col1:
+                st.metric(label=f"Maior Volume ({coluna_selecionada})", value=str(top_registro))
+            with col2:
+                st.metric(label="Total de Movimentações", value=f"{total_registros} envios")
         
         st.warning(
             f"⚠️ **Aviso de Gestão de Risco:** O indicador **{top_registro}** concentra "
@@ -158,7 +185,7 @@ if df is not None:
     contexto_documento += f"Colunas presentes: {', '.join(df.columns)}\n"
     contexto_documento += f"Amostra dos dados:\n{df.head(3).to_string()}"
 
-# CASO 2: PROCESSAMENTO DE PDF (Mantido intacto)
+# CASO 2: PROCESSAMENTO DE PDF
 elif arquivo_enviado is not None and arquivo_enviado.name.endswith('.pdf'):
     try:
         leitor_pdf = pypdf.PdfReader(arquivo_enviado)
