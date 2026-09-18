@@ -4,3 +4,4 @@ pypdf
 pandas
 openpyxl
 plotly
+fpdf2
