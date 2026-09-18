@@ -262,4 +262,3 @@ if df is not None:
             )
         except Exception as pdf_err:
             st.error(f"Erro ao gerar o botão de PDF: {pdf_err}")
-
