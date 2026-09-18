@@ -5,7 +5,7 @@ from google import genai
 from google.genai import types
 import pandas as pd
 import plotly.express as px
-from fpdf import FPDF # <-- Nova ferramenta para gerar o PDF de exportação
+from fpdf import FPDF
 
 # Configuração da página da web - Modo Claro Moderno
 st.set_page_config(page_title="Cintia IA - Supply Chain Analytics", page_icon="🤖", layout="centered")
@@ -61,7 +61,7 @@ with st.sidebar:
     arquivo_enviado = st.file_uploader(
         "Suba sua Base de Conhecimento (PDF, CSV ou Excel)",
         type=["pdf", "csv", "xlsx"],
-        help="Insira manuais in PDF ou planilhas de dados para a Cintia ler."
+        help="Insira manuais em PDF ou planilhas de dados para a Cintia ler."
     )
     
     st.markdown("---")
@@ -77,7 +77,7 @@ df = None
 nome_arquivo = ""
 
 # Define se vamos usar o arquivo enviado ou criar os dados de exemplo automaticamente
-if arquivo_enviado is not None:
+if arquivo_enviado is not None and not arquivo_enviado.name.endswith('.pdf'):
     nome_arquivo = arquivo_enviado.name
     try:
         if nome_arquivo.endswith('.csv'):
@@ -161,7 +161,7 @@ if df is not None:
         total_financeiro_str = "N/A"
         if colunas_numericas:
             col1, col2, col3 = st.columns(3)
-            col_financeira = colunas_numericas[0]
+            col_financeira = colunas_numericas[0] # Pega o primeiro indicador numérico
             total_financeiro = df[col_financeira].sum()
             total_financeiro_str = f"R$ {total_financeiro:,.2f}"
             
@@ -187,30 +187,27 @@ if df is not None:
         # --- 🤖 SUMÁRIO EXECUTIVO AUTOMÁTICO VIA GEMINI ---
         st.markdown("---")
         st.markdown("### 📝 Sumário Executivo Analítico (Gerado por IA)")
-        texto_sumario_pdf = ""
+        texto_sumario_pdf = "Relatório operacional estruturado pronto para tomada de decisão."
         
-        with st.spinner("Cintia analisando padrões na planilha..."):
-            try:
-                prompt_sumario = (
-                    f"Aja como uma consultora sênior de Supply Chain. Analise esses dados agregados:\n"
-                    f"- Total de registros: {total_registros}\n"
-                    f"- Maior concentração na coluna '{coluna_selecionada}': {top_registro} ({percentual:.1f}%).\n"
-                    f"Gere um Sumário Executivo curto e direto (máximo de 2 parágrafos objetivos) focado em eficiência "
-                    f"logística para o relatório do Ricardo."
-                )
-                response_sumario = st.session_state.client.models.generate_content(
-                    model="gemini-3.6-flash",
-                    contents=prompt_sumario
-                )
-                texto_sumario_pdf = response_sumario.text
-                st.info(texto_sumario_pdf)
-            except Exception as e:
-                texto_sumario_pdf = "Relatório operacional estruturado pronto para tomada de decisão."
-                st.info(texto_sumario_pdf)
-        
-        # --- 📥 NOVO RECURSO: EXPORTAÇÃO COMPLETA DE RELATÓRIO PDF ---
         try:
-            # Cria a estrutura do arquivo PDF na memória
+            prompt_sumario = (
+                f"Aja como uma consultora sênior de Supply Chain. Analise esses dados agregados:\n"
+                f"- Total de registros: {total_registros}\n"
+                f"- Maior concentração na coluna '{coluna_selecionada}': {top_registro} ({percentual:.1f}%).\n"
+                f"Gere um Sumário Executivo curto e direto (máximo de 2 parágrafos objetivos) focado em eficiência "
+                f"logística para o relatório do Ricardo."
+            )
+            response_sumario = st.session_state.client.models.generate_content(
+                model="gemini-3.6-flash",
+                contents=prompt_sumario
+            )
+            texto_sumario_pdf = response_sumario.text
+            st.info(texto_sumario_pdf)
+        except Exception as e:
+            st.info(texto_sumario_pdf)
+        
+        # --- 📥 GERAÇÃO COMPLETA DE RELATÓRIO PDF ---
+        try:
             pdf = FPDF()
             pdf.add_page()
             pdf.set_font("Arial", "B", 16)
@@ -225,4 +222,10 @@ if df is not None:
             pdf.set_font("Arial", "B", 14)
             pdf.cell(40, 10, "Sumario Analitico da IA:", ln=True)
             pdf.set_font("Arial", "", 11)
-            # Remove caracteres especiais para evitar erros de codificação no PDF simples
+            
+            texto_limpo = texto_sumario_pdf.replace("•", "-").encode('latin-1', 'ignore').decode('latin-1')
+            pdf.multi_cell(0, 10, texto_limpo)
+            pdf_bytes = pdf.output(dest='S')
+            
+            st.download_button(
+
