@@ -21,6 +21,31 @@ hide_menu_style = """
         """
 st.markdown(hide_menu_style, unsafe_allow_html=True)
 
+# --- 🔒 SISTEMA DE SEGURANÇA E LOGIN (DESTINO B) ---
+if 'logado' not in st.session_state:
+    st.session_state['logado'] = False
+
+def realizar_login():
+    if st.session_state["usuario_input"] == "admin" and st.session_state["senha_input"] == "supply2026":
+        st.session_state['logado'] = True
+        st.success("Acesso autorizado! Iniciando sistemas...")
+    else:
+        st.error("Usuário ou senha incorretos.")
+
+# Bloqueia o aplicativo caso o usuário não esteja logado
+if not st.session_state['logado']:
+    st.markdown("<br><br>", unsafe_allow_html=True)
+    st.title("🔒 Sistema de Controle - Supply Chain Analytics")
+    st.subheader("Área Restrita - Identifique-se para acessar a Cintia IA")
+    
+    st.text_input("Usuário", key="usuario_input")
+    st.text_input("Senha", type="password", key="senha_input")
+    
+    st.button("Entrar no Painel", on_click=realizar_login)
+    st.stop() # Interrompe a execução do script aqui até o login ser feito com sucesso
+
+# --- 🚀 O SEU APLICATIVO ORIGINAL COMEÇA AQUI SE ESTIVER LOGADO ---
+
 # Inicializa o cliente básico do Google
 if "client" not in st.session_state:
     st.session_state.client = genai.Client(api_key=st.secrets["GOOGLE_API_KEY"])
@@ -206,34 +231,8 @@ if df is not None:
         except Exception as e:
             st.info(texto_sumario_pdf)
         
-               # --- 📥 GERAÇÃO COMPLETA DE RELATÓRIO PDF (CORRIGIDO!) ---
+        # --- 📥 GERAÇÃO COMPLETA DE RELATÓRIO PDF ---
         try:
             pdf = FPDF()
             pdf.add_page()
             pdf.set_font("Arial", "B", 16)
-            pdf.cell(40, 10, "Relatorio Executivo - Cintia IA", ln=True)
-            pdf.set_font("Arial", "", 12)
-            pdf.cell(40, 10, f"Arquivo Analisado: {nome_arquivo}", ln=True)
-            pdf.cell(40, 10, f"Indicador de Analise: {coluna_selecionada}", ln=True)
-            pdf.cell(40, 10, f"Total de Movimentacoes: {total_registros}", ln=True)
-            pdf.cell(40, 10, f"Maior Concentracao: {top_registro} ({percentual:.1f}%)", ln=True)
-            pdf.cell(40, 10, f"Custo Total Operacional: {total_financeiro_str}", ln=True)
-            pdf.ln(10)
-            pdf.set_font("Arial", "B", 14)
-            pdf.cell(40, 10, "Sumario Analitico da IA:", ln=True)
-            pdf.set_font("Arial", "", 11)
-            
-            texto_limpo = texto_sumario_pdf.replace("•", "-").encode('latin-1', 'ignore').decode('latin-1')
-            pdf.multi_cell(0, 10, texto_limpo)
-            
-            # 🔥 AQUI ESTÁ A CORREÇÃO: Transformamos explicitamente o output em bytes puros
-            pdf_bytes = bytes(pdf.output())
-            
-            st.download_button(
-                label="📥 Baixar Relatório Executivo em PDF",
-                data=pdf_bytes,
-                file_name=f"Relatorio_Cintia_IA_{coluna_selecionada}.pdf",
-                mime="application/pdf"
-            )
-        except Exception as pdf_err:
-            st.error(f"Erro ao gerar o botão de PDF: {pdf_err}")
