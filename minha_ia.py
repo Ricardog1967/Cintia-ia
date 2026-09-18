@@ -45,7 +45,7 @@ if "historico_visual" not in st.session_state:
 st.title("🤖 Cintia IA - Supply Chain Analytics")
 st.markdown(
     """
-    **Desenvolvido por Ricardo G.** | [🔗 Acesse meu LinkedIn](https://linkedin.com) 
+    **Desenvolvido por Ricardo G.** | [🔗 Acesse meu LinkedIn](https://www.linkedin.com/in/ricardogoncalvesbi/) 
     
     Este aplicativo é um projeto de portfólio focado em **Engenharia de Dados e Logística**. 
     Ele utiliza Inteligência Artificial avançada e processamento de dados em tempo real para analisar 
