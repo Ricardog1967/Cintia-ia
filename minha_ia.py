@@ -100,3 +100,180 @@ elif usar_exemplo:
     }
     df = pd.DataFrame(dados_ficticios)
     st.info("💡 Usando dados de exemplo simulados com indicadores financeiros!")
+
+# Processamento da Planilha
+if df is not None:
+    st.success(f"📊 Planilha '{nome_arquivo}' carregada com sucesso!")
+    st.write("📋 **Visualização rápida dos dados (Primeiras 5 linhas):**")
+    st.dataframe(df.head(5))
+    
+    st.session_state['dados_planilha'] = df
+    
+    st.write("📊 **Análise Visual Avançada:**")
+    colunas_texto = df.select_dtypes(include=['object']).columns.tolist()
+    colunas_numericas = df.select_dtypes(include=['number']).columns.tolist()
+
+    if colunas_texto:
+        padrao_index = colunas_texto.index('Transportadora') if 'Transportadora' in colunas_texto else 0
+        coluna_selecionada = st.selectbox(
+            "🔍 Escolha o indicador para analisar no gráfico:",
+            options=colunas_texto,
+            index=padrao_index
+        )
+        
+        # Abas de gráficos
+        aba_barras, aba_pizza = st.tabs(["📊 Gráfico de Volumetria", "🍕 Distribuição Percentual"])
+        
+        with aba_barras:
+            fig_barras = px.histogram(
+                df, 
+                x=coluna_selecionada, 
+                title=f"Total de Envios por {coluna_selecionada}",
+                color_discrete_sequence=["#007BFF"],
+                template="plotly_white"
+            )
+            fig_barras.update_layout(margin=dict(l=20, r=20, t=40, b=20), height=350)
+            st.plotly_chart(fig_barras, use_container_width=True)
+            
+        with aba_pizza:
+            df_pizza = df[coluna_selecionada].value_counts().reset_index()
+            df_pizza.columns = [coluna_selecionada, 'Quantidade']
+            
+            fig_pizza = px.pie(
+                df_pizza, 
+                values='Quantidade', 
+                names=coluna_selecionada,
+                title=f"Participação da Operação por {coluna_selecionada}",
+                color_discrete_sequence=px.colors.qualitative.Pastel,
+                template="plotly_white"
+            )
+            fig_pizza.update_layout(margin=dict(l=20, r=20, t=40, b=20), height=350)
+            st.plotly_chart(fig_pizza, use_container_width=True)
+        
+        # --- 🧠 INSIGHTS AUTOMÁTICOS COM PAINEL FINANCEIRO ---
+        st.markdown(f"### 💡 Diagnóstico da Cintia sobre {coluna_selecionada}:")
+        
+        top_registro = df[coluna_selecionada].value_counts().idxmax()
+        Qtd_top_registro = df[coluna_selecionada].value_counts().max()
+        total_registros = len(df)
+        percentual = (Qtd_top_registro / total_registros) * 100
+        
+        total_financeiro_str = "N/A"
+        if colunas_numericas:
+            col1, col2, col3 = st.columns(3)
+            col_financeira = colunas_numericas[0]
+            total_financeiro = df[col_financeira].sum()
+            total_financeiro_str = f"R$ {total_financeiro:,.2f}"
+            
+            with col1:
+                st.metric(label=f"Maior Volume ({coluna_selecionada})", value=str(top_registro))
+            with col2:
+                st.metric(label="Total de Movimentações", value=f"{total_registros}")
+            with col3:
+                st.metric(label="Custo Total Identificado", value=total_financeiro_str)
+        else:
+            col1, col2 = st.columns(2)
+            with col1:
+                st.metric(label=f"Maior Volume ({coluna_selecionada})", value=str(top_registro))
+            with col2:
+                st.metric(label="Total de Movimentações", value=f"{total_registros} envios")
+        
+        alerta_texto = (
+            f"O indicador {top_registro} concentra {percentual:.1f}% de toda a sua operação "
+            f"analisada nesta coluna (com {Qtd_top_registro} envios). Monitore de perto essa concentração."
+        )
+        st.warning(f"⚠️ **Aviso de Gestão de Risco:** {alerta_texto}")
+
+        # --- 🤖 SUMÁRIO EXECUTIVO AUTOMÁTICO VIA GEMINI ---
+        st.markdown("---")
+        st.markdown("### 📝 Sumário Executivo Analítico (Gerado por IA)")
+        texto_sumario_pdf = "Relatório operacional estruturado pronto para tomada de decisão."
+        
+        try:
+            prompt_sumario = (
+                f"Aja como uma consultora sênior de Supply Chain. Analise esses dados agregados:\n"
+                f"- Total de registros: {total_registros}\n"
+                f"- Maior concentração na coluna '{coluna_selecionada}': {top_registro} ({percentual:.1f}%).\n"
+                f"Gere um Sumário Executivo curto e direto (máximo de 2 parágrafos objetivos) focado em eficiência "
+                f"logística para o relatório do Ricardo."
+            )
+            response_sumario = st.session_state.client.models.generate_content(
+                model="gemini-3.6-flash",
+                contents=prompt_sumario
+            )
+            texto_sumario_pdf = response_sumario.text
+            st.info(texto_sumario_pdf)
+        except Exception as e:
+            st.info(texto_sumario_pdf)
+        
+        # --- 📥 GERAÇÃO COMPLETA DE RELATÓRIO PDF ---
+        try:
+            pdf = FPDF()
+            pdf.add_page()
+            pdf.set_font("Arial", "B", 16)
+            pdf.cell(40, 10, "Relatorio Executivo - Cintia IA", ln=True)
+            pdf.set_font("Arial", "", 12)
+            pdf.cell(40, 10, f"Arquivo Analisado: {nome_arquivo}", ln=True)
+            pdf.cell(40, 10, f"Indicador de Analise: {coluna_selecionada}", ln=True)
+            pdf.cell(40, 10, f"Total de Movimentacoes: {total_registros}", ln=True)
+            pdf.cell(40, 10, f"Maior Concentracao: {top_registro} ({percentual:.1f}%)", ln=True)
+            pdf.cell(40, 10, f"Custo Total Operacional: {total_financeiro_str}", ln=True)
+            pdf.ln(10)
+            pdf.set_font("Arial", "B", 14)
+            pdf.cell(40, 10, "Sumario Analitico da IA:", ln=True)
+            pdf.set_font("Arial", "", 11)
+            
+            texto_limpo = texto_sumario_pdf.replace("•", "-").encode('latin-1', 'ignore').decode('latin-1')
+            pdf.multi_cell(0, 10, texto_limpo)
+            pdf_bytes = pdf.output(dest='S')
+            
+            st.download_button(
+                label="📥 Baixar Relatório Executivo em PDF",
+                data=pdf_bytes,
+                file_name=f"Relatorio_Cintia_IA_{coluna_selecionada}.pdf",
+                mime="application/pdf"
+            )
+        except Exception as pdf_err:
+            st.error(f"Erro ao gerar o botão de PDF: {pdf_err}")
+    
+    contexto_documento = f"O usuário enviou uma planilha chamada {nome_arquivo}.\n"
+    contexto_documento += f"Colunas presentes: {', '.join(df.columns)}\n"
+    contexto_documento += f"Amostra dos dados:\n{df.head(3).to_string()}"
+
+# CASO 2: PROCESSAMENTO DE PDF
+elif arquivo_enviado is not None and arquivo_enviado.name.endswith('.pdf'):
+    try:
+        leitor_pdf = pypdf.PdfReader(arquivo_enviado)
+        for pagina in leitor_pdf.pages:
+            contexto_documento += pagina.extract_text() + "\n"
+        st.success("📄 Documento PDF lido com sucesso!")
+    except Exception as e:
+        st.error("Erro ao ler o arquivo PDF.")
+
+# --- ÁREA DE CHAT ---
+st.markdown("---")
+st.markdown("### 💬 Conversa Avançada com a Cintia")
+
+for msg in st.session_state.historico_visual:
+    with st.chat_message(msg["role"]):
+        st.write(msg["content"])
+
+if pergunta := st.chat_input("Digite sua mensagem para a Cintia..."):
+    with st.chat_message("user"):
+        st.write(pergunta)
+    st.session_state.historico_visual.append({"role": "user", "content": pergunta})
+    try:
+        if 'contexto_documento' in locals() and contexto_documento:
+            pergunta_completa = f"Baseado neste documento:\n{contexto_documento}\n\nPergunta do usuário: {pergunta}"
+        else:
+            pergunta_completa = pergunta
+
+        response = st.session_state.objeto_chat.send_message(pergunta_completa)
+        
+        with st.chat_message("assistant"):
+            st.write(response.text)
+        st.session_state.historico_visual.append({"role": "assistant", "content": response.text})
+            
+    except Exception as e:
+        st.error(f"Erro de comunicação: {e}")
+
