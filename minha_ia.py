@@ -231,8 +231,35 @@ if df is not None:
         except Exception as e:
             st.info(texto_sumario_pdf)
         
-        # --- 📥 GERAÇÃO COMPLETA DE RELATÓRIO PDF ---
+                # --- 📥 GERAÇÃO COMPLETA DE RELATÓRIO PDF ---
         try:
             pdf = FPDF()
             pdf.add_page()
             pdf.set_font("Arial", "B", 16)
+            pdf.cell(40, 10, "Relatorio Executivo - Cintia IA", ln=True)
+            pdf.set_font("Arial", "", 12)
+            pdf.cell(40, 10, f"Arquivo Analisado: {nome_arquivo}", ln=True)
+            pdf.cell(40, 10, f"Indicador de Analise: {coluna_selecionada}", ln=True)
+            pdf.cell(40, 10, f"Total de Movimentacoes: {total_registros}", ln=True)
+            pdf.cell(40, 10, f"Maior Concentracao: {top_registro} ({percentual:.1f}%)", ln=True)
+            pdf.cell(40, 10, f"Custo Total Operacional: {total_financeiro_str}", ln=True)
+            pdf.ln(10)
+            pdf.set_font("Arial", "B", 14)
+            pdf.cell(40, 10, "Sumario Analitico da IA:", ln=True)
+            pdf.set_font("Arial", "", 11)
+            
+            texto_limpo = texto_sumario_pdf.replace("•", "-").encode('latin-1', 'ignore').decode('latin-1')
+            pdf.multi_cell(0, 10, texto_limpo)
+            
+            # Transformando explicitamente o output em bytes puros
+            pdf_bytes = bytes(pdf.output())
+            
+            st.download_button(
+                label="📥 Baixar Relatório Executivo em PDF",
+                data=pdf_bytes,
+                file_name=f"Relatorio_Cintia_IA_{coluna_selecionada}.pdf",
+                mime="application/pdf"
+            )
+        except Exception as pdf_err:
+            st.error(f"Erro ao gerar o botão de PDF: {pdf_err}")
+
