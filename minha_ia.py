@@ -206,7 +206,7 @@ if df is not None:
         except Exception as e:
             st.info(texto_sumario_pdf)
         
-        # --- 📥 GERAÇÃO COMPLETA DE RELATÓRIO PDF ---
+               # --- 📥 GERAÇÃO COMPLETA DE RELATÓRIO PDF (CORRIGIDO!) ---
         try:
             pdf = FPDF()
             pdf.add_page()
@@ -225,7 +225,9 @@ if df is not None:
             
             texto_limpo = texto_sumario_pdf.replace("•", "-").encode('latin-1', 'ignore').decode('latin-1')
             pdf.multi_cell(0, 10, texto_limpo)
-            pdf_bytes = pdf.output(dest='S')
+            
+            # 🔥 AQUI ESTÁ A CORREÇÃO: Transformamos explicitamente o output em bytes puros
+            pdf_bytes = bytes(pdf.output())
             
             st.download_button(
                 label="📥 Baixar Relatório Executivo em PDF",
@@ -235,45 +237,3 @@ if df is not None:
             )
         except Exception as pdf_err:
             st.error(f"Erro ao gerar o botão de PDF: {pdf_err}")
-    
-    contexto_documento = f"O usuário enviou uma planilha chamada {nome_arquivo}.\n"
-    contexto_documento += f"Colunas presentes: {', '.join(df.columns)}\n"
-    contexto_documento += f"Amostra dos dados:\n{df.head(3).to_string()}"
-
-# CASO 2: PROCESSAMENTO DE PDF
-elif arquivo_enviado is not None and arquivo_enviado.name.endswith('.pdf'):
-    try:
-        leitor_pdf = pypdf.PdfReader(arquivo_enviado)
-        for pagina in leitor_pdf.pages:
-            contexto_documento += pagina.extract_text() + "\n"
-        st.success("📄 Documento PDF lido com sucesso!")
-    except Exception as e:
-        st.error("Erro ao ler o arquivo PDF.")
-
-# --- ÁREA DE CHAT ---
-st.markdown("---")
-st.markdown("### 💬 Conversa Avançada com a Cintia")
-
-for msg in st.session_state.historico_visual:
-    with st.chat_message(msg["role"]):
-        st.write(msg["content"])
-
-if pergunta := st.chat_input("Digite sua mensagem para a Cintia..."):
-    with st.chat_message("user"):
-        st.write(pergunta)
-    st.session_state.historico_visual.append({"role": "user", "content": pergunta})
-    try:
-        if 'contexto_documento' in locals() and contexto_documento:
-            pergunta_completa = f"Baseado neste documento:\n{contexto_documento}\n\nPergunta do usuário: {pergunta}"
-        else:
-            pergunta_completa = pergunta
-
-        response = st.session_state.objeto_chat.send_message(pergunta_completa)
-        
-        with st.chat_message("assistant"):
-            st.write(response.text)
-        st.session_state.historico_visual.append({"role": "assistant", "content": response.text})
-            
-    except Exception as e:
-        st.error(f"Erro de comunicação: {e}")
-
