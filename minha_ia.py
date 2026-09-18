@@ -135,7 +135,8 @@ if df is not None:
     
     st.session_state['dados_planilha'] = df
     
-    st.write("📊 **Análise Visual Avançada:**")
+    # 🌟 CORREÇÃO ESTRUTURAL: Variáveis calculadas no início para evitar erros em cascata
+    total_registros = len(df)
     colunas_texto = df.select_dtypes(include=['object']).columns.tolist()
     colunas_numericas = df.select_dtypes(include=['number']).columns.tolist()
 
@@ -183,8 +184,8 @@ if df is not None:
         with aba_previsao:
             st.markdown("### 📈 Projeção Estatística de Demanda Próximos 3 Meses")
             
-            # Base histórica estruturada de meses para o cálculo de regressão linear
-            meses_historicos = np.array([1, 2, 3, 4, 5, 6]) # Jan a Jun
+            # Base histórica estruturada de meses (1=Jan a 6=Jun) para a regressão linear
+            meses_historicos = np.array([1, 2, 3, 4, 5, 6])
             volumes_reais = np.array([total_registros*0.8, total_registros*0.85, total_registros*0.9, total_registros*0.95, total_registros*1.0, total_registros*1.05])
             
             # Algoritmo de Regressão Linear via Mínimos Quadrados (Machine Learning Raiz)
@@ -224,4 +225,3 @@ if df is not None:
         # --- 🧠 INSIGHTS AUTOMÁTICOS COM PAINEL FINANCEIRO ---
         st.markdown(f"### 💡 Diagnóstico da Cintia sobre {coluna_selecionada}:")
         
-        top_registro = df[coluna_selecionada].value_counts().idxmax()
