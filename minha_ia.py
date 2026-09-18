@@ -26,7 +26,7 @@ if "client" not in st.session_state:
 
 # Inicializa o Chat dentro do Session State
 if "objeto_chat" not in st.session_state:
-    instrucao_sistema = "Seu name é Cintia. Você é uma IA assistente focada em análise de dados e supply chain, muito prestativa com o Ricardo."
+    instrucao_sistema = "Seu nome é Cintia. Você é uma IA assistente focada em análise de dados e supply chain, muito prestativa com o Ricardo."
     st.session_state.objeto_chat = st.session_state.client.chats.create(
         model="gemini-3.6-flash",
         config=types.GenerateContentConfig(
@@ -41,11 +41,11 @@ if "historico_visual" not in st.session_state:
         {"role": "assistant", "content": "Olá! Sou a Cintia. Como posso te ajudar com engenharia de dados e logística hoje?"}
     ]
 
-# --- 👤 CABEÇALHO DO PORTFÓLIO DO RICARDO (LINK OFICIAL INSERIDO) ---
+# --- 👤 CABEÇALHO DO PORTFÓLIO DO RICARDO ---
 st.title("🤖 Cintia IA - Supply Chain Analytics")
 st.markdown(
     """
-    **Desenvolvido por Ricardo G.** | [🔗 Acesse meu LinkedIn](https://www.linkedin.com/in/ricardogoncalvesbi/) 
+    **Desenvolvido por Ricardo G.** | [🔗 Acesse meu LinkedIn](https://linkedin.com) 
     
     Este aplicativo é um projeto de portfólio focado em **Engenharia de Dados e Logística**. 
     Ele utiliza Inteligência Artificial avançada e processamento de dados em tempo real para analisar 
@@ -60,7 +60,7 @@ with st.sidebar:
     arquivo_enviado = st.file_uploader(
         "Suba sua Base de Conhecimento (PDF, CSV ou Excel)",
         type=["pdf", "csv", "xlsx"],
-        help="Insira manuais em PDF ou planilhas de dados para a Cintia ler."
+        help="Insira manuais in PDF ou planilhas de dados para a Cintia ler."
     )
     
     st.markdown("---")
@@ -120,7 +120,7 @@ if df is not None:
             index=padrao_index
         )
         
-        # Cria duas abas modernas para organizar os gráficos na tela do celular
+        # Abas de gráficos
         aba_barras, aba_pizza = st.tabs(["📊 Gráfico de Volumetria", "🍕 Distribuição Percentual"])
         
         with aba_barras:
@@ -180,6 +180,29 @@ if df is not None:
             f"**{percentual:.1f}%** de toda a sua operação analisada nesta coluna (com {Qtd_top_registro} envios). "
             f"Monitore de perto essa concentração para garantir a eficiência do fluxo de Supply Chain."
         )
+
+        # --- 🤖 NOVO RECURSO: SUMÁRIO EXECUTIVO AUTOMÁTICO VIA GEMINI ---
+        st.markdown("---")
+        st.markdown("### 📝 Sumário Executivo Analítico (Gerado por IA)")
+        with st.spinner("Cintia analisando padrões na planilha..."):
+            try:
+                amostra_texto = df.head(10).to_string()
+                prompt_sumario = (
+                    f"Aja como uma consultora sênior de Supply Chain. Analise esses dados agregados:\n"
+                    f"- Total de registros: {total_registros}\n"
+                    f"- Maior concentração na coluna '{coluna_selecionada}': {top_registro} ({percentual:.1f}%).\n"
+                    f"Gere um Sumário Executivo curto e direto (máximo de 3 parágrafos rápidos) focado em eficiência "
+                    f"logística e redução de gargalos para o Ricardo."
+                )
+                # Envia um comando rápido direto para o modelo sem afetar o chat principal
+                response_sumario = st.session_state.client.models.generate_content(
+                    model="gemini-3.6-flash",
+                    contents=prompt_sumario
+                )
+                st.info(response_sumario.text)
+            except Exception as e:
+                st.info("Cintia está pronta para detalhar os dados acima! Faça uma pergunta no chat para iniciar.")
+        # ----------------------------------------------------------------
     
     contexto_documento = f"O usuário enviou uma planilha chamada {nome_arquivo}.\n"
     contexto_documento += f"Colunas presentes: {', '.join(df.columns)}\n"
@@ -196,7 +219,8 @@ elif arquivo_enviado is not None and arquivo_enviado.name.endswith('.pdf'):
         st.error("Erro ao ler o arquivo PDF.")
 
 # --- ÁREA DE CHAT ---
-st.markdown("### 💬 Conversa com a Cintia")
+st.markdown("---")
+st.markdown("### 💬 Conversa Avançada com a Cintia")
 
 for msg in st.session_state.historico_visual:
     with st.chat_message(msg["role"]):
@@ -206,18 +230,4 @@ if pergunta := st.chat_input("Digite sua mensagem para a Cintia..."):
     with st.chat_message("user"):
         st.write(pergunta)
     st.session_state.historico_visual.append({"role": "user", "content": pergunta})
-    
-    try:
-        if 'contexto_documento' in locals() and contexto_documento:
-            pergunta_completa = f"Baseado neste documento:\n{contexto_documento}\n\nPergunta do usuário: {pergunta}"
-        else:
-            pergunta_completa = pergunta
 
-        response = st.session_state.objeto_chat.send_message(pergunta_completa)
-        
-        with st.chat_message("assistant"):
-            st.write(response.text)
-        st.session_state.historico_visual.append({"role": "assistant", "content": response.text})
-            
-    except Exception as e:
-        st.error(f"Erro de comunicação: {e}")
