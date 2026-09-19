@@ -120,6 +120,10 @@ elif usar_exemplo:
     df = pd.DataFrame(dados_ficticios)
     st.info("💡 Usando dados de exemplo simulados com indicadores financeiros!")
 
+# Variaveis de escopo inicializadas para o chat usar mais abaixo
+total_registros = 0
+coluna_selecionada = "N/A"
+
 if df is not None:
     st.success(f"📊 Dados de '{nome_arquivo}' carregados com sucesso!")
     st.write("📋 **Visualização rápida da tabela (Primeiras 5 linhas):**")
@@ -306,28 +310,31 @@ if df is not None:
         except Exception as pdf_err:
             st.error(f"Erro ao gerar o relatório PDF: {pdf_err}")
 
-    # ==============================================================================
-    # --- 💬 🤖 MÓDULO REINTEGRADO: CHAT INTERATIVO COM A CINTIA IA ---
-    # ==============================================================================
-    st.markdown("---")
-    st.markdown("### 💬 Converse com a Cintia IA sobre esta Base")
+# ==============================================================================
+# --- 💬 🤖 MÓDULO CORRIGIDO: CHAT NA RAIZ DO PROJETO (FIXADO EM BAIXO) ---
+# ==============================================================================
+st.markdown("---")
+st.markdown("### 💬 Converse com a Cintia IA sobre esta Base")
 
-    for msg in st.session_state.historico_visual:
-        with st.chat_message(msg["role"]):
-            st.markdown(msg["content"])
+# Renderiza o histórico de mensagens
+for msg in st.session_state.historico_visual:
+    with st.chat_message(msg["role"]):
+        st.markdown(msg["content"])
 
-    if prompt_usuario := st.chat_input("Pergunte algo sobre os dados (ex: Qual departamento tem maior turnover?)"):
-        st.session_state.historico_visual.append({"role": "user", "content": prompt_usuario})
-        with st.chat_message("user"):
-            st.markdown(prompt_usuario)
+# Caixa oficial de input (Colocada na raiz para o Streamlit fixar no rodapé)
+if prompt_usuario := st.chat_input("Pergunte algo sobre os dados da planilha..."):
+    st.session_state.historico_visual.append({"role": "user", "content": prompt_usuario})
+    with st.chat_message("user"):
+        st.markdown(prompt_usuario)
 
-        resumo_dados_ia = f"Contexto da Planilha Atual:\n- Nome: {nome_arquivo}\n- Linhas Totais: {total_registros}\n- Colunas: {df.columns.tolist()}"
-        prompt_completo_ia = f"{resumo_dados_ia}\n\nPergunta do Usuário: {prompt_usuario}"
+    # Contexto estruturado seguro para a IA responder
+    resumo_dados_ia = f"Contexto do Arquivo:\n- Nome: {nome_arquivo}\n- Linhas Totais: {total_registros}\n- Coluna Foco: {coluna_selecionada}"
+    prompt_completo_ia = f"{resumo_dados_ia}\n\nPergunta do Ricardo: {prompt_usuario}"
 
-        with st.chat_message("assistant"):
-            response_chat = st.session_state.objeto_chat.send_message(prompt_completo_ia)
-            resposta_texto = response_chat.text
-            st.markdown(resposta_texto)
-            
-        st.session_state.historico_visual.append({"role": "assistant", "content": respuesta_texto})
-    # ==============================================================================
+    with st.chat_message("assistant"):
+        response_chat = st.session_state.objeto_chat.send_message(prompt_completo_ia)
+        resposta_texto = response_chat.text
+        st.markdown(resposta_texto)
+        
+    st.session_state.historico_visual.append({"role": "assistant", "content": resposta_texto})
+# ==============================================================================
