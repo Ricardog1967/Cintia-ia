@@ -62,7 +62,7 @@ if "objeto_chat" not in st.session_state:
 
 if "historico_visual" not in st.session_state:
     st.session_state.historico_visual = [
-        {"role": "assistant", "content": "Olá! Sou a Cintia. Suba qualquer arquivo de dados (RH, Logística, Finanças) que farei o diagnóstico completo hoje!"}
+        {"role": "assistant", "content": "Olá! Sou a Cintia. Faça perguntas na barra lateral que eu farei o diagnóstico!"}
     ]
 
 st.title("🤖 Cintia IA - Universal Data Analytics")
@@ -75,6 +75,15 @@ st.markdown(
     """
 )
 st.markdown("---")
+
+contexto_documento = ""
+df = None
+nome_arquivo = "Nenhum arquivo carregado"
+
+# Variáveis globais para o chat lateral ler com segurança
+total_registros = 0
+coluna_selecionada = "N/A"
+metrica_selecionada = "N/A"
 
 with st.sidebar:
     st.subheader("📁 Upload de Documentos")
@@ -89,12 +98,8 @@ with st.sidebar:
     usar_exemplo = st.button("Carregar Planilha de Exemplo")
     
     st.markdown("---")
-    st.info("Especialista em:\n- 📊 Engenharia de Dados\n- 📈 Inteligência de Negócios (BI)\n- 🔮 Modelos Preditivos (ML)")
+    st.info("Especialista em:\n- 📊 Engenharia de Dados\n- 📈 BI Universais\n- 🔮 Modelos Preditivos (ML)")
     st.success("Status: Online 🟢")
-
-contexto_documento = ""
-df = None
-nome_arquivo = "Nenhum arquivo carregado"
 
 if arquivo_enviado is not None and not arquivo_enviado.name.endswith('.pdf'):
     nome_arquivo = arquivo_enviado.name
@@ -119,10 +124,6 @@ elif usar_exemplo:
     }
     df = pd.DataFrame(dados_ficticios)
     st.info("💡 Usando dados de exemplo simulados com indicadores financeiros!")
-
-total_registros = 0
-coluna_selecionada = "N/A"
-metrica_selecionada = "N/A"
 
 if df is not None:
     st.success(f"📊 Dados de '{nome_arquivo}' carregados com sucesso!")
@@ -201,7 +202,6 @@ if df is not None:
         with aba_previsao:
             st.markdown("### 📈 Projeção Estatística Baseada no Histórico de Dados")
             
-            # Arrays populados para o cálculo estável da Regressão Linear por Mínimos Quadrados
             meses_historicos = np.array([1, 2, 3, 4, 5, 6])
             fator_escala = df_agrupado[valores_eixo_y].mean() if not df_agrupado.empty else 100
             
@@ -312,29 +312,30 @@ if df is not None:
             st.error(f"Erro ao gerar o relatório PDF: {pdf_err}")
 
 # ==============================================================================
-# --- 💬 🤖 MÓDULO CORRIGIDO: CHAT ULTRA ESTÁVEL VIA FORMULÁRIO (SEM RERUN) ---
+# --- 💬 🤖 MÓDULO ULTRA ESTÁVEL: CHAT ISOLADO DENTRO DA BARRA LATERAL ---
 # ==============================================================================
-st.markdown("---")
-st.markdown("### 💬 Converse com a Cintia IA sobre esta Base")
-
-for msg in st.session_state.historico_visual:
-    with st.chat_message(msg["role"]):
-        st.markdown(msg["content"])
-
-with st.form(key="formulario_chat_cintia", clear_on_submit=True):
-    pergunta_texto = st.text_input("Sua pergunta para a Cintia IA:", placeholder="Digite aqui sua pergunta e clique no botão abaixo...")
-    botao_enviar = st.form_submit_button("🚀 Enviar Pergunta")
-
-if botao_enviar and pergunta_texto:
-    st.session_state.historico_visual.append({"role": "user", "content": pergunta_texto})
+with st.sidebar:
+    st.markdown("---")
+    st.markdown("### 💬 Chat com a Cintia IA")
     
-    resumo_dados_ia = f"Contexto do Arquivo:\n- Nome: {nome_arquivo}\n- Linhas Totais: {total_registros}\n- Coluna Foco: {coluna_selecionada}\n- Metrica: {metrica_selecionada}"
-    prompt_completo_ia = f"{resumo_dados_ia}\n\nPergunta do Ricardo: {pergunta_texto}"
+    with st.form(key="formulario_chat_lateral", clear_on_submit=True):
+        pergunta_texto = st.text_input("Sua pergunta:", placeholder="Pergunte sobre os dados...")
+        botao_enviar = st.form_submit_button("🚀 Enviar")
 
-    with st.chat_message("assistant"):
-        response_chat = st.session_state.objeto_chat.send_message(prompt_completo_ia)
-        resposta_texto = response_chat.text
+    if botao_enviar and pergunta_texto:
+        st.session_state.historico_visual.append({"role": "user", "content": pergunta_texto})
         
-    st.session_state.historico_visual.append({"role": "assistant", "content": resposta_texto})
-    st.sidebar.success("Resposta gerada!")
+        resumo_dados_ia = f"Contexto do Arquivo:\n- Nome: {nome_arquivo}\n- Linhas Totais: {total_registros}\n- Coluna Foco: {coluna_selecionada}"
+        prompt_completo_ia = f"{resumo_dados_ia}\n\nPergunta do Ricardo: {pergunta_texto}"
+
+        try:
+            response_chat = st.session_state.objeto_chat.send_message(prompt_completo_ia)
+            st.session_state.historico_visual.append({"role": "assistant", "content": response_chat.text})
+        except Exception as chat_err:
+            st.session_state.historico_visual.append({"role": "assistant", "content": f"⚠️ Erro de limite do Google: {chat_err}"})
+
+    # Renderiza o histórico de mensagens dentro da própria barra lateral
+    for msg in st.session_state.historico_visual:
+        with st.chat_message(msg["role"]):
+            st.markdown(msg["content"])
 # ==============================================================================
