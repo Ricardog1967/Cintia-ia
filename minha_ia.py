@@ -94,7 +94,7 @@ with st.sidebar:
 
 contexto_documento = ""
 df = None
-nome_arquivo = ""
+nome_arquivo = "Nenhum arquivo carregado"
 
 if arquivo_enviado is not None and not arquivo_enviado.name.endswith('.pdf'):
     nome_arquivo = arquivo_enviado.name
@@ -120,7 +120,7 @@ elif usar_exemplo:
     df = pd.DataFrame(dados_ficticios)
     st.info("💡 Usando dados de exemplo simulados com indicadores financeiros!")
 
-# Variaveis de escopo inicializadas para o chat usar mais abaixo
+# Inicialização global de escopo para o chat ler mesmo se a planilha mudar
 total_registros = 0
 coluna_selecionada = "N/A"
 
@@ -311,23 +311,23 @@ if df is not None:
             st.error(f"Erro ao gerar o relatório PDF: {pdf_err}")
 
 # ==============================================================================
-# --- 💬 🤖 MÓDULO CORRIGIDO: CHAT NA RAIZ DO PROJETO (FIXADO EM BAIXO) ---
+# --- 💬 🤖 MÓDULO CORRIGIDO: CHAT FORA DO IF (RAIZ ABSOLUTA DO PROGRAMA) ---
 # ==============================================================================
 st.markdown("---")
 st.markdown("### 💬 Converse com a Cintia IA sobre esta Base")
 
-# Renderiza o histórico de mensagens
+# Exibe o histórico de mensagens salvas na sessão
 for msg in st.session_state.historico_visual:
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
 
-# Caixa oficial de input (Colocada na raiz para o Streamlit fixar no rodapé)
+# O SEGREDO DO SUCESSO: Fora do bloco 'if', totalmente alinhado à esquerda!
 if prompt_usuario := st.chat_input("Pergunte algo sobre os dados da planilha..."):
     st.session_state.historico_visual.append({"role": "user", "content": prompt_usuario})
     with st.chat_message("user"):
         st.markdown(prompt_usuario)
 
-    # Contexto estruturado seguro para a IA responder
+    # Criação do prompt contextualizado seguro
     resumo_dados_ia = f"Contexto do Arquivo:\n- Nome: {nome_arquivo}\n- Linhas Totais: {total_registros}\n- Coluna Foco: {coluna_selecionada}"
     prompt_completo_ia = f"{resumo_dados_ia}\n\nPergunta do Ricardo: {prompt_usuario}"
 
@@ -336,5 +336,6 @@ if prompt_usuario := st.chat_input("Pergunte algo sobre os dados da planilha..."
         resposta_texto = response_chat.text
         st.markdown(resposta_texto)
         
-    st.session_state.historico_visual.append({"role": "assistant", "content": resposta_texto})
+    st.session_state.historico_visual.append({"role": "assistant", "content": respuesta_texto})
+    st.rerun() # Força a página a processar o envio e atualizar liso na tela
 # ==============================================================================
