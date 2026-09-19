@@ -201,13 +201,14 @@ if df is not None:
         with aba_previsao:
             st.markdown("### 📈 Projeção Estatística Baseada no Histórico de Dados")
             
-            meses_historicos = np.array()
+            # 🌟 CORREÇÃO CIRÚRGICA: Listas devidamente preenchidas com dados numéricos reais para o cálculo de ML
+            meses_historicos = np.array([1, 2, 3, 4, 5, 6])
             fator_escala = df_agrupado[valores_eixo_y].mean() if not df_agrupado.empty else 100
             
             volumes_reais = np.array([fator_escala*0.8, fator_escala*0.85, fator_escala*0.9, fator_escala*0.95, fator_escala*1.0, fator_escala*1.05])
             
             coef_angular, coef_linear = np.polyfit(meses_historicos, volumes_reais, 1)
-            meses_futuros = np.array()
+            meses_futuros = np.array([7, 8, 9])
             volumes_projetados = coef_angular * meses_futuros + coef_linear
             
             meses_nomes = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul (Previsto)', 'Ago (Previsto)', 'Set (Previsto)']
@@ -316,17 +317,14 @@ if df is not None:
 st.markdown("---")
 st.markdown("### 💬 Converse com a Cintia IA sobre esta Base")
 
-# Renderiza o histórico de mensagens salvas de forma visual estável
 for msg in st.session_state.historico_visual:
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
 
-# O grande truque de estabilidade: Envelopar o input em um st.form
 with st.form(key="formulario_chat_cintia", clear_on_submit=True):
-    pergunta_texto = st.text_input("Sua pergunta para a Cintia IA:", placeholder="Digite aqui sua pergunta (Ex: Qual canal tem o melhor SLA?)")
+    pergunta_texto = st.text_input("Sua pergunta para a Cintia IA:", placeholder="Digite aqui sua pergunta e clique no botão abaixo...")
     botao_enviar = st.form_submit_button("🚀 Enviar Pergunta")
 
-# Executa o processamento apenas quando o botão do formulário for clicado fisicamente
 if botao_enviar and pergunta_texto:
     st.session_state.historico_visual.append({"role": "user", "content": pergunta_texto})
     
@@ -338,6 +336,6 @@ if botao_enviar and pergunta_texto:
         resposta_texto = response_chat.text
         
     st.session_state.historico_visual.append({"role": "assistant", "content": resposta_texto})
-    st.sidebar.success("Resposta gerada!") # Feedback visual na barra lateral
-    st.rerun() # Atualiza a tela exibindo os novos balões de fala perfeitamente
+    st.sidebar.success("Resposta gerada!")
+    st.rerun()
 # ==============================================================================
