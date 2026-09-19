@@ -181,9 +181,7 @@ if df is not None:
                 template="plotly_white"
             )
             fig_barras.update_layout(margin=dict(l=20, r=20, t=40, b=20), height=350)
-            # Atualizado para o novo padrão width do Streamlit
             st.plotly_chart(fig_barras, width="stretch")
-            
         with aba_pizza:
             fig_pizza = px.pie(
                 df_agrupado, 
@@ -194,7 +192,6 @@ if df is not None:
                 template="plotly_white"
             )
             fig_pizza.update_layout(margin=dict(l=20, r=20, t=40, b=20), height=350)
-            # Atualizado para o novo padrão width do Streamlit
             st.plotly_chart(fig_pizza, width="stretch")
 
         with aba_previsao:
@@ -223,7 +220,6 @@ if df is not None:
                 template="plotly_white"
             )
             fig_linha.update_layout(margin=dict(l=20, r=20, t=40, b=20), height=350)
-            # Atualizado para o novo padrão width do Streamlit
             st.plotly_chart(fig_linha, width="stretch")
             
             limite_capacidade = fator_escala * 1.12
@@ -234,3 +230,104 @@ if df is not None:
                 risco_financeiro = excesso_calculado * (fator_escala * 0.15)
                 
                 st.error(f"⚠️ **ALERTA DE CAPACIDADE DETECTADO:** A curva preditiva indica crescimento acentuado com pico estimado de **{volume_pico_previsto:.1f}** no fechamento do trimestre, ultrapassando os níveis de estabilidade da empresa.")
+                st.metric(
+                    label="💸 EXPOSIÇÃO FINANCEIRA ESTIMADA AO RISCO", 
+                    value=f"R$ {risco_financeiro:,.2f}", 
+                    delta="Variação Crítica de Custo", 
+                    delta_color="inverse"
+                )
+            else:
+                st.success(f"✅ **Indicadores sob Controle:** A posição matemática aponta estabilidade dentro das metas corporativas para os próximos 90 dias.")
+        
+        # --- 🧠 INSIGHTS AUTOMÁTICOS ---
+        st.markdown(f"### 💡 Diagnóstico Corporativo sobre {coluna_selecionada}:")
+        
+        top_registro = df[coluna_selecionada].value_counts().idxmax()
+        Qtd_top_registro = df[coluna_selecionada].value_counts().max()
+        percentual = (Qtd_top_registro / total_registros) * 100
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            st.metric(label=f"Maior Frequência ({coluna_selecionada})", value=str(top_registro))
+        with col2:
+            st.metric(label="Total de Linhas Processadas", value=f"{total_registros}")
+            
+        alerta_texto = f"O indicador '{top_registro}' concentra {percentual:.1f}% de todas as ocorrências na coluna {coluna_selecionada}."
+        st.warning(f"⚠️ **Gestão de Concentração:** {alerta_texto}")
+
+        # --- 🤖 SUMÁRIO EXECUTIVO COMPLETO VIA GEMINI ---
+        st.markdown("---")
+        st.markdown("### 📝 Sumário Analítico Gerencial (Gerado por IA)")
+        texto_sumario_pdf = "Relatório analítico estruturado pronto para tomada de decisão."
+        
+        try:
+            prompt_sumario = (
+                f"Aja como uma consultora sênior de inteligência de negócios. Analise esses indicadores agregados da planilha '{nome_arquivo}':\n"
+                f"- Linhas totais: {total_registros}\n"
+                f"- Coluna de foco selecionada: {coluna_selecionada} (Maior volume: {top_registro} com {percentual:.1f}% de presença).\n"
+                f"- Métrica numérica avaliada: {metrica_selecionada}.\n"
+                f"Escreva um Sumário Executivo muito curto, direto e corporativo (máximo de 2 parágrafos) analisando o cenário e propondo mitigações de risco."
+            )
+            response_sumario = st.session_state.client.models.generate_content(
+                model="gemini-3.6-flash",
+                contents=prompt_sumario
+            )
+            texto_sumario_pdf = response_sumario.text
+            st.info(texto_sumario_pdf)
+        except Exception as e:
+            st.info(texto_sumario_pdf)
+        
+        # --- 📥 EXPORTAÇÃO EM PDF ---
+        try:
+            pdf = FPDF()
+            pdf.add_page()
+            pdf.set_font("Arial", "B", 16)
+            pdf.cell(40, 10, "Relatorio Analitico Universal - Cintia IA", ln=True)
+            pdf.set_font("Arial", "", 12)
+            pdf.cell(40, 10, f"Origem dos Dados: {nome_arquivo}", ln=True)
+            pdf.cell(40, 10, f"Dimensao Analisada: {coluna_selecionada}", ln=True)
+            pdf.cell(40, 10, f"Metrica Avaliada: {metrica_selecionada}", ln=True)
+            pdf.cell(40, 10, f"Volume de Registros: {total_registros}", ln=True)
+            pdf.ln(10)
+            pdf.set_font("Arial", "B", 14)
+            pdf.cell(40, 10, "Parecer Gerencial da Inteligencia Artificial:", ln=True)
+            pdf.set_font("Arial", "", 11)
+            
+            texto_limpo = texto_sumario_pdf.replace("•", "-").encode('latin-1', 'ignore').decode('latin-1')
+            pdf.multi_cell(0, 10, texto_limpo)
+            
+            pdf_bytes = bytes(pdf.output())
+            st.download_button(
+                label="📥 Baixar Parecer Executivo em PDF",
+                data=pdf_bytes,
+                file_name=f"Relatorio_Universal_Cintia_IA.pdf",
+                mime="application/pdf"
+            )
+        except Exception as pdf_err:
+            st.error(f"Erro ao gerar o relatório PDF: {pdf_err}")
+
+    # ==============================================================================
+    # --- 💬 🤖 MÓDULO REINTEGRADO: CHAT INTERATIVO COM A CINTIA IA ---
+    # ==============================================================================
+    st.markdown("---")
+    st.markdown("### 💬 Converse com a Cintia IA sobre esta Base")
+
+    for msg in st.session_state.historico_visual:
+        with st.chat_message(msg["role"]):
+            st.markdown(msg["content"])
+
+    if prompt_usuario := st.chat_input("Pergunte algo sobre os dados (ex: Qual departamento tem maior turnover?)"):
+        st.session_state.historico_visual.append({"role": "user", "content": prompt_usuario})
+        with st.chat_message("user"):
+            st.markdown(prompt_usuario)
+
+        resumo_dados_ia = f"Contexto da Planilha Atual:\n- Nome: {nome_arquivo}\n- Linhas Totais: {total_registros}\n- Colunas: {df.columns.tolist()}"
+        prompt_completo_ia = f"{resumo_dados_ia}\n\nPergunta do Usuário: {prompt_usuario}"
+
+        with st.chat_message("assistant"):
+            response_chat = st.session_state.objeto_chat.send_message(prompt_completo_ia)
+            resposta_texto = response_chat.text
+            st.markdown(resposta_texto)
+            
+        st.session_state.historico_visual.append({"role": "assistant", "content": respuesta_texto})
+    # ==============================================================================
