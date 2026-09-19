@@ -120,9 +120,9 @@ elif usar_exemplo:
     df = pd.DataFrame(dados_ficticios)
     st.info("💡 Usando dados de exemplo simulados com indicadores financeiros!")
 
-# Inicialização global de escopo para o chat ler mesmo se a planilha mudar
 total_registros = 0
 coluna_selecionada = "N/A"
+metrica_selecionada = "N/A"
 
 if df is not None:
     st.success(f"📊 Dados de '{nome_arquivo}' carregados com sucesso!")
@@ -201,13 +201,13 @@ if df is not None:
         with aba_previsao:
             st.markdown("### 📈 Projeção Estatística Baseada no Histórico de Dados")
             
-            meses_historicos = np.array([1, 2, 3, 4, 5, 6])
+            meses_historicos = np.array()
             fator_escala = df_agrupado[valores_eixo_y].mean() if not df_agrupado.empty else 100
             
             volumes_reais = np.array([fator_escala*0.8, fator_escala*0.85, fator_escala*0.9, fator_escala*0.95, fator_escala*1.0, fator_escala*1.05])
             
             coef_angular, coef_linear = np.polyfit(meses_historicos, volumes_reais, 1)
-            meses_futuros = np.array([7, 8, 9])
+            meses_futuros = np.array()
             volumes_projetados = coef_angular * meses_futuros + coef_linear
             
             meses_nomes = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul (Previsto)', 'Ago (Previsto)', 'Set (Previsto)']
@@ -311,31 +311,33 @@ if df is not None:
             st.error(f"Erro ao gerar o relatório PDF: {pdf_err}")
 
 # ==============================================================================
-# --- 💬 🤖 MÓDULO CORRIGIDO: CHAT FORA DO IF (RAIZ ABSOLUTA DO PROGRAMA) ---
+# --- 💬 🤖 MÓDULO ULTRA ESTÁVEL: CHAT ESTRUTURADO VIA FORMULÁRIO ---
 # ==============================================================================
 st.markdown("---")
 st.markdown("### 💬 Converse com a Cintia IA sobre esta Base")
 
-# Exibe o histórico de mensagens salvas na sessão
+# Renderiza o histórico de mensagens salvas de forma visual estável
 for msg in st.session_state.historico_visual:
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
 
-# O SEGREDO DO SUCESSO: Fora do bloco 'if', totalmente alinhado à esquerda!
-if prompt_usuario := st.chat_input("Pergunte algo sobre os dados da planilha..."):
-    st.session_state.historico_visual.append({"role": "user", "content": prompt_usuario})
-    with st.chat_message("user"):
-        st.markdown(prompt_usuario)
+# O grande truque de estabilidade: Envelopar o input em um st.form
+with st.form(key="formulario_chat_cintia", clear_on_submit=True):
+    pergunta_texto = st.text_input("Sua pergunta para a Cintia IA:", placeholder="Digite aqui sua pergunta (Ex: Qual canal tem o melhor SLA?)")
+    botao_enviar = st.form_submit_button("🚀 Enviar Pergunta")
 
-    # Criação do prompt contextualizado seguro
-    resumo_dados_ia = f"Contexto do Arquivo:\n- Nome: {nome_arquivo}\n- Linhas Totais: {total_registros}\n- Coluna Foco: {coluna_selecionada}"
-    prompt_completo_ia = f"{resumo_dados_ia}\n\nPergunta do Ricardo: {prompt_usuario}"
+# Executa o processamento apenas quando o botão do formulário for clicado fisicamente
+if botao_enviar and pergunta_texto:
+    st.session_state.historico_visual.append({"role": "user", "content": pergunta_texto})
+    
+    resumo_dados_ia = f"Contexto do Arquivo:\n- Nome: {nome_arquivo}\n- Linhas Totais: {total_registros}\n- Coluna Foco: {coluna_selecionada}\n- Metrica: {metrica_selecionada}"
+    prompt_completo_ia = f"{resumo_dados_ia}\n\nPergunta do Ricardo: {pergunta_texto}"
 
     with st.chat_message("assistant"):
         response_chat = st.session_state.objeto_chat.send_message(prompt_completo_ia)
         resposta_texto = response_chat.text
-        st.markdown(resposta_texto)
         
-    st.session_state.historico_visual.append({"role": "assistant", "content": respuesta_texto})
-    st.rerun() # Força a página a processar o envio e atualizar liso na tela
+    st.session_state.historico_visual.append({"role": "assistant", "content": resposta_texto})
+    st.sidebar.success("Resposta gerada!") # Feedback visual na barra lateral
+    st.rerun() # Atualiza a tela exibindo os novos balões de fala perfeitamente
 # ==============================================================================
