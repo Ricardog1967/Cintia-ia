@@ -201,7 +201,7 @@ if df is not None:
         with aba_previsao:
             st.markdown("### 📈 Projeção Estatística Baseada no Histórico de Dados")
             
-            # 🌟 CORREÇÃO CIRÚRGICA: Listas devidamente preenchidas com dados numéricos reais para o cálculo de ML
+            # Arrays populados para o cálculo estável da Regressão Linear por Mínimos Quadrados
             meses_historicos = np.array([1, 2, 3, 4, 5, 6])
             fator_escala = df_agrupado[valores_eixo_y].mean() if not df_agrupado.empty else 100
             
@@ -312,7 +312,7 @@ if df is not None:
             st.error(f"Erro ao gerar o relatório PDF: {pdf_err}")
 
 # ==============================================================================
-# --- 💬 🤖 MÓDULO ULTRA ESTÁVEL: CHAT ESTRUTURADO VIA FORMULÁRIO ---
+# --- 💬 🤖 MÓDULO CORRIGIDO: CHAT ULTRA ESTÁVEL VIA FORMULÁRIO (SEM RERUN) ---
 # ==============================================================================
 st.markdown("---")
 st.markdown("### 💬 Converse com a Cintia IA sobre esta Base")
@@ -337,5 +337,4 @@ if botao_enviar and pergunta_texto:
         
     st.session_state.historico_visual.append({"role": "assistant", "content": resposta_texto})
     st.sidebar.success("Resposta gerada!")
-    st.rerun()
 # ==============================================================================
