@@ -142,7 +142,6 @@ if df is not None:
             )
             
         with col2_sel:
-            # Se existirem colunas numéricas, permite escolher qual somar, caso contrário conta os registros
             if colunas_numericas:
                 metrica_selecionada = st.selectbox(
                     "🧮 Analisar valor da coluna métrica:",
@@ -156,7 +155,6 @@ if df is not None:
 
         st.write("📊 **Análise Visual Avançada Dinâmica:**")
         
-        # Preparação do DataFrame agrupado para o BI dinâmico
         if modo_calculo == "Soma":
             df_agrupado = df.groupby(coluna_selecionada)[metrica_selecionada].sum().reset_index()
             titulo_grafico = f"Total acumulado de {metrica_selecionada} por {coluna_selecionada}"
@@ -183,7 +181,8 @@ if df is not None:
                 template="plotly_white"
             )
             fig_barras.update_layout(margin=dict(l=20, r=20, t=40, b=20), height=350)
-            st.plotly_chart(fig_barras, use_container_width=True)
+            # Atualizado para o novo padrão width do Streamlit
+            st.plotly_chart(fig_barras, width="stretch")
             
         with aba_pizza:
             fig_pizza = px.pie(
@@ -195,13 +194,13 @@ if df is not None:
                 template="plotly_white"
             )
             fig_pizza.update_layout(margin=dict(l=20, r=20, t=40, b=20), height=350)
-            st.plotly_chart(fig_pizza, use_container_width=True)
+            # Atualizado para o novo padrão width do Streamlit
+            st.plotly_chart(fig_pizza, width="stretch")
 
         with aba_previsao:
             st.markdown("### 📈 Projeção Estatística Baseada no Histórico de Dados")
             
             meses_historicos = np.array([1, 2, 3, 4, 5, 6])
-            # Multiplicador dinâmico usando o valor base dos dados carregados
             fator_escala = df_agrupado[valores_eixo_y].mean() if not df_agrupado.empty else 100
             
             volumes_reais = np.array([fator_escala*0.8, fator_escala*0.85, fator_escala*0.9, fator_escala*0.95, fator_escala*1.0, fator_escala*1.05])
@@ -224,7 +223,8 @@ if df is not None:
                 template="plotly_white"
             )
             fig_linha.update_layout(margin=dict(l=20, r=20, t=40, b=20), height=350)
-            st.plotly_chart(fig_linha, use_container_width=True)
+            # Atualizado para o novo padrão width do Streamlit
+            st.plotly_chart(fig_linha, width="stretch")
             
             limite_capacidade = fator_escala * 1.12
             volume_pico_previsto = max(volumes_projetados)
@@ -233,3 +233,4 @@ if df is not None:
                 excesso_calculado = volume_pico_previsto - limite_capacidade
                 risco_financeiro = excesso_calculado * (fator_escala * 0.15)
                 
+                st.error(f"⚠️ **ALERTA DE CAPACIDADE DETECTADO:** A curva preditiva indica crescimento acentuado com pico estimado de **{volume_pico_previsto:.1f}** no fechamento do trimestre, ultrapassando os níveis de estabilidade da empresa.")
