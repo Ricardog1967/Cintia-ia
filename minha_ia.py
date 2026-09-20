@@ -7,17 +7,31 @@ import pandas as pd
 import plotly.express as px
 from fpdf import FPDF
 import numpy as np
+import time  # Biblioteca necessária para gerenciar a espera entre tentativas de conexão
 
 # Configuração da página da web - Modo Claro Moderno
 st.set_page_config(page_title="Cintia IA - Universal Data Analytics", page_icon="🤖", layout="centered")
 
-# --- 🎨 TRUQUE VISUAL: Esconde os menus padrão do Streamlit ---
+# --- 🎨 TRUQUE VISUAL: Esconde os menus e customiza o tamanho da letra do Chat Input ---
 hide_menu_style = """
         <style>
         #MainMenu {visibility: hidden;}
         footer {visibility: hidden;}
         header {visibility: hidden;}
         .stDeployButton {display:none;}
+        
+        /* Altera o tamanho da letra ao digitar e do texto informativo (placeholder) */
+        .stChatInput textarea, 
+        .stChatInput textarea::placeholder,
+        .stChatInput p {
+            font-size: 24px !important;
+            font-weight: bold !important;
+        }
+        
+        /* Ajusta a altura da caixa para acomodar a letra maior */
+        .stChatInput div {
+            min-height: 55px !important;
+        }
         </style>
         """
 st.markdown(hide_menu_style, unsafe_allow_html=True)
@@ -44,14 +58,13 @@ if not st.session_state['logado']:
     
     st.button("Entrar no Painel", on_click=realizar_login)
     st.stop()
-
 # --- 🚀 INÍCIO DO APLICATIVO APÓS LOGIN ---
 
 if "client" not in st.session_state:
     st.session_state.client = genai.Client(api_key=st.secrets["GOOGLE_API_KEY"])
 
 if "objeto_chat" not in st.session_state:
-    instrucao_sistema = "Seu nome é Cintia. Você é uma IA assistente focada em engenharia de dados, análise de negócios e BI, pronta para analisar qualquer tipo de planilha para o Ricardo."
+    instrucao_sistema = "Seu nome é Cintia. Você é uma IA assistente focada em engenharia de dados, análise de negócios, BI e análise de currículos, pronta para ajudar o Ricardo."
     st.session_state.objeto_chat = st.session_state.client.chats.create(
         model="gemini-3.6-flash",
         config=types.GenerateContentConfig(
@@ -62,7 +75,7 @@ if "objeto_chat" not in st.session_state:
 
 if "historico_visual" not in st.session_state:
     st.session_state.historico_visual = [
-        {"role": "assistant", "content": "Olá! Sou a Cintia. Faça perguntas na barra inferior que eu farei o diagnóstico em tempo real baseado no seu painel!"}
+        {"role": "assistant", "content": "Olá! Sou a Cintia. Faça perguntas na barra inferior que eu farei o diagnóstico em tempo real baseado no seu painel ou documentos!"}
     ]
 
 st.title("🤖 Cintia IA - Universal Data Analytics")
@@ -70,8 +83,8 @@ st.markdown(
     """
     **Desenvolvido por Ricardo G.** | [🔗 Acesse meu LinkedIn](https://linkedin.com) 
     
-    Este aplicativo é uma plataforma de **Business Intelligence e Data Science** agnóstica a dados.
-    Insira planilhas de qualquer setor para gerar gráficos agrupados, projeções preditivas e sumários gerenciais automáticos.
+    Este aplicativo é uma plataforma de **Business Intelligence, Data Science e Document Analytics** agnóstica a dados.
+    Insira planilhas ou documentos em PDF para gerar análises visuais, projeções preditivas e pareceres automáticos.
     """
 )
 st.markdown("---")
@@ -98,18 +111,39 @@ with st.sidebar:
     usar_exemplo = st.button("Carregar Planilha de Exemplo")
     
     st.markdown("---")
-    st.info("Especialista em:\n- 📊 Engenharia de Dados\n- 📈 BI Universais\n- 🔮 Modelos Preditivos (ML)")
+    st.info("Especialista em:\n- 📊 Engenharia de Dados\n- 📈 BI Universais\n- 🔮 Modelos Preditivos (ML)\n- 📄 Análise Doc/Currículos")
     st.success("Status: Online 🟢")
 
-if arquivo_enviado is not None and not arquivo_enviado.name.endswith('.pdf'):
+if arquivo_enviado is not None:
     nome_arquivo = arquivo_enviado.name
-    try:
-        if nome_arquivo.endswith('.csv'):
-            df = pd.read_csv(arquivo_enviado)
-        else:
-            df = pd.read_excel(arquivo_enviado)
-    except Exception as e:
-        st.error(f"Erro ao ler o arquivo enviado: {e}")
+    
+    # --- 📄 MOTOR DE LEITURA DE PDF (CURRÍCULO E DOCUMENTOS) ---
+    if nome_arquivo.endswith('.pdf'):
+        try:
+            leitor_pdf = pypdf.PdfReader(arquivo_enviado)
+            texto_extraido = ""
+            for pagina in leitor_pdf.pages:
+                texto_pagina = pagina.extract_text()
+                if texto_pagina:
+                    texto_extraido += texto_pagina + "\n"
+            
+            if texto_extraido.strip():
+                contexto_documento = texto_extraido
+                st.success(f"📄 Texto do PDF '{nome_arquivo}' extraído com sucesso para a Cintia IA!")
+            else:
+                st.error("⚠️ Não foi possível extrair texto deste PDF (pode ser um PDF escaneado como imagem).")
+        except Exception as e:
+            st.error(f"Erro ao ler o arquivo PDF: {e}")
+            
+    # --- 📊 MOTOR DE PLANILHAS (CSV E EXCEL) ---
+    else:
+        try:
+            if nome_arquivo.endswith('.csv'):
+                df = pd.read_csv(arquivo_enviado)
+            else:
+                df = pd.read_excel(arquivo_enviado)
+        except Exception as e:
+            st.error(f"Erro ao ler o arquivo de planilha enviado: {e}")
         
 elif usar_exemplo:
     nome_arquivo = "Planilha_Exemplo_Supply_Chain.xlsx"
@@ -129,7 +163,6 @@ elif usar_exemplo:
     }
     df = pd.DataFrame(dados_ficticios)
     st.info("💡 Usando dados de exemplo simulados com indicadores financeiros e de tempo reais!")
-
 if df is not None:
     st.success(f"📊 Dados de '{nome_arquivo}' carregados com sucesso!")
     st.write("📋 **Visualização rápida da tabela (Primeiras 5 linhas):**")
@@ -180,6 +213,7 @@ if df is not None:
             "🍕 Distribuição Percentual", 
             "🔮 Previsão de Tendências (ML)"
         ])
+        
         with aba_barras:
             fig_barras = px.bar(
                 df_agrupado, 
@@ -212,7 +246,6 @@ if df is not None:
             for col in df.columns:
                 if df[col].dtype == 'object':
                     try:
-                        # Tenta converter colunas de texto suspeitas para data
                         pd.to_datetime(df[col].head(3), errors='raise')
                         colunas_data.append(col)
                     except:
@@ -225,7 +258,6 @@ if df is not None:
                 df_temp = df.copy()
                 df_temp[coluna_data_eleita] = pd.to_datetime(df_temp[coluna_data_eleita])
                 
-                # Agrupa por mês/ano real encontrado na planilha
                 df_temporal = df_temp.groupby(df_temp[coluna_data_eleita].dt.to_period("M"))[valores_eixo_y].mean().reset_index()
                 df_temporal[coluna_data_eleita] = df_temporal[coluna_data_eleita].astype(str)
                 
@@ -235,12 +267,11 @@ if df is not None:
                 if len(meses_historicos) > 1:
                     coef_angular, coef_linear = np.polyfit(meses_historicos, volumes_reais, 1)
                 else:
-                    coef_angular, coef_linear = 0.0, volumes_reais[0] if len(volumes_reais) > 0 else 100
+                    coef_angular, coef_linear = 0.0, volumes_reais if len(volumes_reais) > 0 else 100
                 
                 meses_futuros = np.array([len(df_temporal), len(df_temporal)+1, len(df_temporal)+2])
                 volumes_projetados = coef_angular * meses_futuros + coef_linear
                 
-                # Cria a linha do tempo estendida com os próximos 3 meses reais
                 ultimo_periodo = pd.Period(df_temporal[coluna_data_eleita].iloc[-1], freq='M')
                 meses_nomes = list(df_temporal[coluna_data_eleita]) + [str(ultimo_periodo + i) + " (Previsto)" for i in range(1, 4)]
                 valores_finais = list(volumes_reais) + list(volumes_projetados)
@@ -248,12 +279,11 @@ if df is not None:
                 
                 fator_escala = volumes_reais.mean() if len(volumes_reais) > 0 else 100
             else:
-                # Fallback de segurança caso a planilha não tenha nenhuma data
-                meses_historicos = np.array([1, 2, 3, 4, 5, 6])
                 fator_escala = df_agrupado[valores_eixo_y].mean() if not df_agrupado.empty else 100
                 volumes_reais = np.array([fator_escala*0.8, fator_escala*0.85, fator_escala*0.9, fator_escala*0.95, fator_escala*1.0, fator_escala*1.05])
+                meses_historicos = np.arange(6)
                 coef_angular, coef_linear = np.polyfit(meses_historicos, volumes_reais, 1)
-                meses_futuros = np.array([7, 8, 9])
+                meses_futuros = np.array([6, 7, 8])
                 volumes_projetados = coef_angular * meses_futuros + coef_linear
                 meses_nomes = ['Mês 1', 'Mês 2', 'Mês 3', 'Mês 4', 'Mês 5', 'Mês 6', 'Mês 7 (Previsto)', 'Mês 8 (Previsto)', 'Mês 9 (Previsto)']
                 valores_finais = list(volumes_reais) + list(volumes_projetados)
@@ -272,7 +302,7 @@ if df is not None:
             st.plotly_chart(fig_linha, width="stretch")
             
             limite_capacidade = fator_escala * 1.12
-            volume_pico_previsto = max(volumes_projetados)
+            volume_pico_previsto = max(volumes_projetados) if len(volumes_projetados) > 0 else 0
             
             if volume_pico_previsto > limite_capacidade:
                 excesso_calculado = volume_pico_previsto - limite_capacidade
@@ -287,7 +317,6 @@ if df is not None:
                 )
             else:
                 st.success(f"✅ **Indicadores sob Controle:** A posição matemática aponta estabilidade dentro das metas corporativas para os próximos 90 dias.")
-        
         # --- 👑 DIAGNÓSTICO CORPORATIVO ---
         st.markdown(f"### 💡 Diagnóstico Corporativo sobre {coluna_selecionada}:")
         
@@ -301,7 +330,7 @@ if df is not None:
         with col2:
             st.metric(label="Total de Linhas Processadas", value=f"{total_registros}")
             
-        alerta_texto = f"O indicador '{top_registro}' concentra {percentual:.1f}% de todas as ocorrências na coluna {coluna_selecionada}."
+        alerta_texto = f"O indicator '{top_registro}' concentra {percentual:.1f}% de todas as ocorrências na coluna {coluna_selecionada}."
         st.warning(f"⚠️ **Gestão de Concentração:** {alerta_texto}")
 
         # --- 🤖 SUMÁRIO EXECUTIVO COMPLETO VIA GEMINI ---
@@ -373,19 +402,38 @@ if pergunta_texto := st.chat_input("Digite sua pergunta sobre o relatório aqui.
     with st.chat_message("user"):
         st.markdown(pergunta_texto)
         
+    # Prepara o contexto de dados e documentos para enviar à API do Gemini
     resumo_dados_ia = f"Contexto do Arquivo:\n- Nome: {nome_arquivo}\n- Linhas Totais: {total_registros}\n- Coluna Foco: {coluna_selecionada}\n- Métrica: {metrica_selecionada}"
-    prompt_completo_ia = f"{resumo_dados_ia}\n\nPergunta do Ricardo: {pergunta_texto}"
+    
+    # Se houver um PDF carregado na memória, anexa o texto dele no prompt da IA
+    if contexto_documento:
+        prompt_completo_ia = f"{resumo_dados_ia}\n\n[CONTEÚDO DO DOCUMENTO PDF CARREGADO]:\n{contexto_documento}\n\nPergunta do Ricardo: {pergunta_texto}"
+    else:
+        prompt_completo_ia = f"{resumo_dados_ia}\n\nPergunta do Ricardo: {pergunta_texto}"
 
     with st.chat_message("assistant"):
         message_placeholder = st.empty()
-        try:
-            response_chat = st.session_state.objeto_chat.send_message(prompt_completo_ia)
-            resposta_texto = response_chat.text
-            message_placeholder.markdown(resposta_texto)
-            st.session_state.historico_visual.append({"role": "assistant", "content": resposta_texto})
-        except Exception as chat_err:
-            resposta_erro = f"⚠️ Erro de comunicação com o Google Gemini: {chat_err}"
-            message_placeholder.markdown(resposta_erro)
-            st.session_state.historico_visual.append({"role": "assistant", "content": resposta_erro})
+        
+        # --- 🛡️ MOTOR DE RESILIÊNCIA CONTRA ERRO 503 (ALTA DEMANDA) ---
+        resposta_texto = ""
+        tentativas_maximas = 3
+        
+        for tentativa in range(tentativas_maximas):
+            try:
+                response_chat = st.session_state.objeto_chat.send_message(prompt_completo_ia)
+                resposta_texto = response_chat.text
+                break  # Conexão bem-sucedida, sai do laço de repetição
+            except Exception as chat_err:
+                # Se for a última tentativa e persistir o erro, armazena a mensagem de falha
+                if tentativa == tentativas_maximas - 1:
+                    resposta_texto = f"⚠️ Erro de comunicação com o Google Gemini (Servidor Instável): {chat_err}"
+                else:
+                    # Aguarda 2 segundos antes de tentar restabelecer a conexão com o servidor
+                    time.sleep(2)
+                    
+        # Renderiza o resultado final na tela de conversação
+        message_placeholder.markdown(resposta_texto)
+        st.session_state.historico_visual.append({"role": "assistant", "content": resposta_texto})
             
     st.rerun()
+
