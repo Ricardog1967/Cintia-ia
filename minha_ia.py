@@ -115,7 +115,12 @@ elif usar_exemplo:
     nome_arquivo = "Planilha_Exemplo_Supply_Chain.xlsx"
     import random
     random.seed(42)
+    
+    # Criamos datas reais consecutivas para o nosso modelo de exemplo performar perfeitamente
+    datas_simuladas = pd.date_range(start="2026-01-01", periods=100, freq="D")
+    
     dados_ficticios = {
+        'Data_Envio': datas_simuladas,
         'ShipmentID': [f'SHP-{i:05d}' for i in range(1, 101)],
         'OrderID': [f'ORD-{i:05d}' for i in range(1001, 1101)],
         'SupplierID': ['SUP-05']*35 + ['SUP-04']*25 + ['SUP-01']*15 + ['SUP-02']*15 + ['SUP-03']*10,
@@ -123,7 +128,7 @@ elif usar_exemplo:
         'Custo_Frete_R$': [round(random.uniform(500, 4500), 2) for _ in range(100)]
     }
     df = pd.DataFrame(dados_ficticios)
-    st.info("💡 Usando dados de exemplo simulados com indicadores financeiros!")
+    st.info("💡 Usando dados de exemplo simulados com indicadores financeiros e de tempo reais!")
 
 if df is not None:
     st.success(f"📊 Dados de '{nome_arquivo}' carregados com sucesso!")
@@ -200,28 +205,67 @@ if df is not None:
             st.plotly_chart(fig_pizza, width="stretch")
 
         with aba_previsao:
-            st.markdown("### 📈 Projeção Estatística Baseada no Histórico de Dados")
+            st.markdown("### 📈 Projeção Estatística Baseada no Histórico Temporal Real")
             
-            meses_historicos = np.array([1, 2, 3, 4, 5, 6])
-            fator_escala = df_agrupado[valores_eixo_y].mean() if not df_agrupado.empty else 100
+            # --- 🔮 MOTOR DE INTELIGÊNCIA TEMPORAL (DATAS REAIS) ---
+            colunas_data = []
+            for col in df.columns:
+                if df[col].dtype == 'object':
+                    try:
+                        # Tenta converter colunas de texto suspeitas para data
+                        pd.to_datetime(df[col].head(3), errors='raise')
+                        colunas_data.append(col)
+                    except:
+                        pass
+                elif pd.api.types.is_datetime64_any_dtype(df[col]):
+                    colunas_data.append(col)
             
-            volumes_reais = np.array([fator_escala*0.8, fator_escala*0.85, fator_escala*0.9, fator_escala*0.95, fator_escala*1.0, fator_escala*1.05])
-            
-            coef_angular, coef_linear = np.polyfit(meses_historicos, volumes_reais, 1)
-            meses_futuros = np.array([7, 8, 9])
-            volumes_projetados = coef_angular * meses_futuros + coef_linear
-            
-            meses_nomes = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul (Previsto)', 'Ago (Previsto)', 'Set (Previsto)']
-            valores_finais = list(volumes_reais) + list(volumes_projetados)
-            tipos = ['Histórico']*6 + ['Projeção (ML)']*3
-            
+            if colunas_data:
+                coluna_data_eleita = colunas_data[0]
+                df_temp = df.copy()
+                df_temp[coluna_data_eleita] = pd.to_datetime(df_temp[coluna_data_eleita])
+                
+                # Agrupa por mês/ano real encontrado na planilha
+                df_temporal = df_temp.groupby(df_temp[coluna_data_eleita].dt.to_period("M"))[valores_eixo_y].mean().reset_index()
+                df_temporal[coluna_data_eleita] = df_temporal[coluna_data_eleita].astype(str)
+                
+                meses_historicos = np.arange(len(df_temporal))
+                volumes_reais = df_temporal[valores_eixo_y].to_numpy()
+                
+                if len(meses_historicos) > 1:
+                    coef_angular, coef_linear = np.polyfit(meses_historicos, volumes_reais, 1)
+                else:
+                    coef_angular, coef_linear = 0.0, volumes_reais[0] if len(volumes_reais) > 0 else 100
+                
+                meses_futuros = np.array([len(df_temporal), len(df_temporal)+1, len(df_temporal)+2])
+                volumes_projetados = coef_angular * meses_futuros + coef_linear
+                
+                # Cria a linha do tempo estendida com os próximos 3 meses reais
+                ultimo_periodo = pd.Period(df_temporal[coluna_data_eleita].iloc[-1], freq='M')
+                meses_nomes = list(df_temporal[coluna_data_eleita]) + [str(ultimo_periodo + i) + " (Previsto)" for i in range(1, 4)]
+                valores_finais = list(volumes_reais) + list(volumes_projetados)
+                tipos = ['Histórico Real']*len(df_temporal) + ['Projeção (ML)']*3
+                
+                fator_escala = volumes_reais.mean() if len(volumes_reais) > 0 else 100
+            else:
+                # Fallback de segurança caso a planilha não tenha nenhuma data
+                meses_historicos = np.array([1, 2, 3, 4, 5, 6])
+                fator_escala = df_agrupado[valores_eixo_y].mean() if not df_agrupado.empty else 100
+                volumes_reais = np.array([fator_escala*0.8, fator_escala*0.85, fator_escala*0.9, fator_escala*0.95, fator_escala*1.0, fator_escala*1.05])
+                coef_angular, coef_linear = np.polyfit(meses_historicos, volumes_reais, 1)
+                meses_futuros = np.array([7, 8, 9])
+                volumes_projetados = coef_angular * meses_futuros + coef_linear
+                meses_nomes = ['Mês 1', 'Mês 2', 'Mês 3', 'Mês 4', 'Mês 5', 'Mês 6', 'Mês 7 (Previsto)', 'Mês 8 (Previsto)', 'Mês 9 (Previsto)']
+                valores_finais = list(volumes_reais) + list(volumes_projetados)
+                tipos = ['Histórico Simulando']*6 + ['Projeção (ML)']*3
+
             df_ml = pd.DataFrame({'Período': meses_nomes, 'Métrica Analisada': valores_finais, 'Status': tipos})
             
             fig_linha = px.line(
                 df_ml, x='Período', y='Métrica Analisada', color='Status',
-                title="Tendência Estatística Preditiva (Próximos 90 Dias)",
+                title="Tendência Estatística Preditiva Automatizada",
                 markers=True,
-                color_discrete_map={'Histórico': '#007BFF', 'Projeção (ML)': '#FF4B4B'},
+                color_discrete_map={'Histórico Real': '#007BFF', 'Histórico Simulando': '#007BFF', 'Projeção (ML)': '#FF4B4B'},
                 template="plotly_white"
             )
             fig_linha.update_layout(margin=dict(l=20, r=20, t=40, b=20), height=350)
