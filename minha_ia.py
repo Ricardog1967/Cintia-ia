@@ -62,7 +62,7 @@ if "objeto_chat" not in st.session_state:
 
 if "historico_visual" not in st.session_state:
     st.session_state.historico_visual = [
-        {"role": "assistant", "content": "Olá! Sou a Cintia. Faça perguntas na barra lateral que eu farei o diagnóstico!"}
+        {"role": "assistant", "content": "Olá! Sou a Cintia. Faça perguntas na barra inferior que eu farei o diagnóstico em tempo real baseado no seu painel!"}
     ]
 
 st.title("🤖 Cintia IA - Universal Data Analytics")
@@ -80,7 +80,7 @@ contexto_documento = ""
 df = None
 nome_arquivo = "Nenhum arquivo carregado"
 
-# Variáveis globais para o chat lateral ler com segurança
+# Variáveis globais para o chat ler com segurança
 total_registros = 0
 coluna_selecionada = "N/A"
 metrica_selecionada = "N/A"
@@ -175,7 +175,6 @@ if df is not None:
             "🍕 Distribuição Percentual", 
             "🔮 Previsão de Tendências (ML)"
         ])
-        
         with aba_barras:
             fig_barras = px.bar(
                 df_agrupado, 
@@ -187,6 +186,7 @@ if df is not None:
             )
             fig_barras.update_layout(margin=dict(l=20, r=20, t=40, b=20), height=350)
             st.plotly_chart(fig_barras, width="stretch")
+            
         with aba_pizza:
             fig_pizza = px.pie(
                 df_agrupado, 
@@ -244,7 +244,7 @@ if df is not None:
             else:
                 st.success(f"✅ **Indicadores sob Controle:** A posição matemática aponta estabilidade dentro das metas corporativas para os próximos 90 dias.")
         
-        # --- 🧠 INSIGHTS AUTOMÁTICOS ---
+        # --- 👑 DIAGNÓSTICO CORPORATIVO ---
         st.markdown(f"### 💡 Diagnóstico Corporativo sobre {coluna_selecionada}:")
         
         top_registro = df[coluna_selecionada].value_counts().idxmax()
@@ -312,30 +312,36 @@ if df is not None:
             st.error(f"Erro ao gerar o relatório PDF: {pdf_err}")
 
 # ==============================================================================
-# --- 💬 🤖 MÓDULO ULTRA ESTÁVEL: CHAT ISOLADO DENTRO DA BARRA LATERAL ---
+# --- 💬 🤖 NOVO MÓDULO: CHAT INTEGRADO PROFISSIONAL NA ÁREA PRINCIPAL ---
 # ==============================================================================
-with st.sidebar:
-    st.markdown("---")
-    st.markdown("### 💬 Chat com a Cintia IA")
+st.markdown("---")
+st.markdown("### 💬 Converse com a Cintia IA sobre este Painel")
+
+# Renderiza as mensagens anteriores direto no corpo da página
+for msg in st.session_state.historico_visual:
+    with st.chat_message(msg["role"]):
+        st.markdown(msg["content"])
+
+# Campo flutuante moderno de input no rodapé da página principal
+if pergunta_texto := st.chat_input("Digite sua pergunta sobre o relatório aqui..."):
+    st.session_state.historico_visual.append({"role": "user", "content": pergunta_texto})
     
-    with st.form(key="formulario_chat_lateral", clear_on_submit=True):
-        pergunta_texto = st.text_input("Sua pergunta:", placeholder="Pergunte sobre os dados...")
-        botao_enviar = st.form_submit_button("🚀 Enviar")
-
-    if botao_enviar and pergunta_texto:
-        st.session_state.historico_visual.append({"role": "user", "content": pergunta_texto})
+    with st.chat_message("user"):
+        st.markdown(pergunta_texto)
         
-        resumo_dados_ia = f"Contexto do Arquivo:\n- Nome: {nome_arquivo}\n- Linhas Totais: {total_registros}\n- Coluna Foco: {coluna_selecionada}"
-        prompt_completo_ia = f"{resumo_dados_ia}\n\nPergunta do Ricardo: {pergunta_texto}"
+    resumo_dados_ia = f"Contexto do Arquivo:\n- Nome: {nome_arquivo}\n- Linhas Totais: {total_registros}\n- Coluna Foco: {coluna_selecionada}\n- Métrica: {metrica_selecionada}"
+    prompt_completo_ia = f"{resumo_dados_ia}\n\nPergunta do Ricardo: {pergunta_texto}"
 
+    with st.chat_message("assistant"):
+        message_placeholder = st.empty()
         try:
             response_chat = st.session_state.objeto_chat.send_message(prompt_completo_ia)
-            st.session_state.historico_visual.append({"role": "assistant", "content": response_chat.text})
+            resposta_texto = response_chat.text
+            message_placeholder.markdown(resposta_texto)
+            st.session_state.historico_visual.append({"role": "assistant", "content": resposta_texto})
         except Exception as chat_err:
-            st.session_state.historico_visual.append({"role": "assistant", "content": f"⚠️ Erro de limite do Google: {chat_err}"})
-
-    # Renderiza o histórico de mensagens dentro da própria barra lateral
-    for msg in st.session_state.historico_visual:
-        with st.chat_message(msg["role"]):
-            st.markdown(msg["content"])
-# ==============================================================================
+            resposta_erro = f"⚠️ Erro de comunicação com o Google Gemini: {chat_err}"
+            message_placeholder.markdown(resposta_erro)
+            st.session_state.historico_visual.append({"role": "assistant", "content": resposta_erro})
+            
+    st.rerun()
