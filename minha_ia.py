@@ -100,7 +100,7 @@ def processar_previsao_ml(df, valores_eixo_y, df_agrupado):
         elif pd.api.types.is_datetime64_any_dtype(df[col]):
             colunas_data.append(col)
     
-    # Tratamento cronológico dinâmico utilizando a primeira coluna de data como string
+    # CORREÇÃO CRÍTICA EXTRAÇÃO: Coleta estritamente a string do primeiro elemento contra o ValueError de mapeamento
     if colunas_data:
         coluna_data_eleita = colunas_data[0]
         df_temp = df.copy()
@@ -128,10 +128,10 @@ def processar_previsao_ml(df, valores_eixo_y, df_agrupado):
         fator_escala = volumes_reais.mean() if len(volumes_reais) > 0 else 100
     else:
         fator_escala = df_agrupado[valores_eixo_y].mean() if not df_agrupado.empty else 100
-        volumes_reais = np.array([fator_escala*0.8, factor_escala*0.85, factor_escala*0.9, factor_escala*0.95, factor_escala*1.0, factor_escala*1.05])
+        volumes_reais = np.array([fator_escala*0.8, fator_escala*0.85, fator_escala*0.9, fator_escala*0.95, fator_escala*1.0, fator_escala*1.05])
         meses_historicos = np.arange(6)
         coef_angular, coef_linear = np.polyfit(meses_historicos, volumes_reais, 1)
-        meses_futuros = np.array([])
+        meses_futuros = np.array([6, 7, 8])
         volumes_projetados = coef_angular * meses_futuros + coef_linear
         meses_nomes = ['Mês 1', 'Mês 2', 'Mês 3', 'Mês 4', 'Mês 5', 'Mês 6', 'Mês 7 (Previsto)', 'Mês 8 (Previsto)', 'Mês 9 (Previsto)']
         valores_finais = list(volumes_reais) + list(volumes_projetados)
@@ -254,7 +254,7 @@ if df is not None:
         with aba_previsao:
             st.markdown("### 📈 Projeção Estatística Baseada no Histórico Temporal Real")
             
-            # Executa a chamada do bloco lógico matemático corrigido (Bloco 2)
+            # Aciona a chamada do bloco lógico matemático corrigido (Bloco 2)
             meses_nomes, valores_finais, tipos, volumes_projetados, fator_escala = processar_previsao_ml(df, valores_eixo_y, df_agrupado)
 
             df_ml = pd.DataFrame({'Período': meses_nomes, 'Métrica Analisada': valores_finais, 'Status': tipos})
@@ -313,7 +313,7 @@ if df is not None:
             pdf.cell(40, 10, "Parecer Gerencial da Inteligencia Artificial:", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
             pdf.set_font("Helvetica", "", 11)
             
-            map_carac = {"•": "-", "–": "-", "—": "-", "“": '"', "”": '"', "‘": "'", "’": "'", "…": "..."}
+            map_carac = {"•": "-", "–": "-", "—": "-", "“": '"', "’": '"', "‘": "'", "’": "'", "…": "..."}
             texto_tratado = texto_sumario_pdf
             for orig, dest in map_carac.items():
                 texto_tratado = texto_tratado.replace(orig, dest)
