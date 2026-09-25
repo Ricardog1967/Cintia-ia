@@ -1,7 +1,8 @@
-streamlit
-google-genai
-pypdf
-pandas
-openpyxl
-plotly
-fpdf2
+streamlit>=1.35.0
+pandas>=2.2.0
+numpy>=1.26.0
+plotly>=5.20.0
+pypdf>=4.2.0
+fpdf2>=2.7.8
+google-genai>=0.1.1
+openpyxl>=3.1.0
